@@ -24,7 +24,7 @@
 data/  # jeśli nie chcesz wysyłać plików konfiguracyjnych z danymi
 *.log
 *.dat
-*.json
+config.json
 
 # Systemowe
 .DS_Store

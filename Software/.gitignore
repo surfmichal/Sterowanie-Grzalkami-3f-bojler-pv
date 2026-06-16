@@ -1,0 +1,31 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# Kompilacja
+*.o
+*.d
+*.elf
+*.bin
+*.map
+*.a
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dane
+data/  # jeśli nie chcesz wysyłać plików konfiguracyjnych z danymi
+*.log
+*.dat
+*.json
+
+# Systemowe
+.DS_Store
+Thumbs.db

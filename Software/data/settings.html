@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>ESP32 - Ustawienia</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        input[type="number"] { width: auto; min-width: 150px; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #45a049; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #da190b; }
+        .success { color: green; padding: 10px; display: none; }
+        .error { color: red; padding: 10px; display: none; }
+        hr { margin: 20px 0; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row > * { flex: 1; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input { width: auto; }
+        .info { background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div style='background: white; padding: 10px 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>
+    <span style='font-size: 18px; font-weight: bold;'>⚙️ Ustawienia</span>
+    <a href='/' style='background: #4CAF50; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px;'>🏠 Strona główna</a>
+    </div>
+    <div class='container'>
+        <h1>⚙️ Ustawienia systemu</h1>
+        
+        <div id='successMsg' class='success'>✅ Ustawienia zapisane! Restartowanie...</div>
+        <div id='errorMsg' class='error'>❌ Błąd zapisu ustawień!</div>
+        
+        <!-- SEKCJA: Załaczanie Systemu grzania -->
+        <div class='card'>
+            <h3>🔥 Załączanie Systemu grzania</h3>
+            <label class='checkbox-group'>
+                <input type='checkbox' id='heaterEnabled' onchange='toggleHeater()'>
+                System grzania AKTYWNY
+            </label>
+            <div id='heaterStatus' style='margin-top: 10px;'></div>
+        </div>
+
+        <!-- SEKCJA: WiFi -->
+        <div class='card'>
+            <h3>📡 Konfiguracja WiFi</h3>
+            <form id='wifiForm'>
+                <div class='form-group'>
+                    <label>SSID</label>
+                    <input type='text' id='wifi_ssid' required>
+                </div>
+                <div class='form-group'>
+                    <label>Hasło</label>
+                    <input type='password' id='wifi_pass'>
+                </div>
+                <div class='form-group'>
+                    <label class='checkbox-group'>
+                        <input type='checkbox' id='wifi_dhcp' checked> Użyj DHCP (automatyczne IP)
+                    </label>
+                </div>
+                <div id='staticIpFields' style='display: none;'>
+                    <div class='form-group'>
+                        <label>Statyczne IP</label>
+                        <input type='text' id='wifi_ip' placeholder='192.168.1.100'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Gateway</label>
+                        <input type='text' id='wifi_gateway' placeholder='192.168.1.1'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Maska</label>
+                        <input type='text' id='wifi_mask' placeholder='255.255.255.0'>
+                    </div>
+                    <div class='form-group'>
+                        <label>DNS</label>
+                        <input type='text' id='wifi_dns' placeholder='8.8.8.8'>
+                    </div>
+                </div>
+                <button type='button' onclick='saveWiFi()'>💾 Zapisz WiFi</button>
+                <button type='button' class='danger' onclick='resetWiFi()'>🗑️ Resetuj WiFi</button>
+            </form>
+        </div>
+        
+        <!-- SEKCJA: Modbus -->
+        <div class='card'>
+            <h3>🔌 Konfiguracja Modbus TCP</h3>
+            <form id='modbusForm'>
+                <div class='form-group'>
+                    <label>Adres IP falownika</label>
+                    <input type='text' id='modbus_ip' placeholder='192.168.1.200'>
+                </div>
+                <div class='form-group'>
+                    <label>Port</label>
+                    <input type='number' id='modbus_port' value='502' min='1' max='65535'>
+                </div>
+                <div class='form-group'>
+                    <label>Unit ID</label>
+                    <input type='number' id='modbus_unitId' value='1' min='1' max='255'>
+                </div>
+                <div class='form-group'>
+                    <label>Interwał odczytu (ms)</label>
+                    <input type='number' id='modbus_readInterval' value='5000' min='1000' step='1000'>
+                </div>
+                <div class='form-group'>
+                    <label class='checkbox-group'>
+                        <input type='checkbox' id='modbus_enabled' checked> Modbus aktywny
+                    </label>
+                </div>
+                <button type='button' onclick='saveModbus()'>💾 Zapisz Modbus</button>
+            </form>
+        </div>
+        
+        <!-- SEKCJA: Grzałki (używająca struktury U) -->
+        <div class='card'>
+            <h3>🔥 Konfiguracja grzałek</h3>
+            <form id='heaterForm'>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Napięcie załączenia U_on (V)</label>
+                        <input type='number' id='heater_u_on' step='0.5' placeholder='252'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Napięcie wyłączenia U_off (V)</label>
+                        <input type='number' id='heater_u_off' step='0.5' placeholder='250'>
+                    </div>
+                </div>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Opóźnienie wyłączenia (ms)</label>
+                        <input type='number' id='heater_delay_off' step='1000' placeholder='5000'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Maksymalna temp. bojlera (°C)</label>
+                        <input type='number' id='bojler_tmax' step='1' placeholder='85'>
+                    </div>
+                </div>
+                <div class='form-group'>
+                    <label class='checkbox-group'>
+                        <input type='checkbox' id='heater_enabled' checked> System grzałek aktywny
+                    </label>
+                </div>
+                <div class='info'>
+                    ℹ️ Grzałki załączają się NATYCHMIAST gdy napięcie >= U_on<br>
+                    Wyłączają się po czasie opóźnienia gdy napięcie <= U_off
+                </div>
+                <button type='button' onclick='saveHeater()'>💾 Zapisz ustawienia grzałek</button>
+            </form>
+        </div>
+
+        <!-- SEKCJA: LOGI -->
+        <div class='card'>
+            <h3>📝 Konfiguracja logów</h3>
+            <form id='logsForm'>
+                <div class='form-group'>
+                    <label>Tryb przechowywania</label>
+                    <select id='log_storage_mode'>
+                        <option value='ram'>RAM tylko (szybki, bez zapisu do flash)</option>
+                        <option value='flash'>RAM + FLASH (trwałe, ale zużywa pamięć)</option>
+                    </select>
+                </div>
+                <div class='form-group'>
+                    <label>Poziom logowania</label>
+                    <select id='log_level'>
+                        <option value='0'>DEBUG (wszystko)</option>
+                        <option value='1'>INFO (informacje)</option>
+                        <option value='2'>WARN (ostrzeżenia)</option>
+                        <option value='3'>ERROR (tylko błędy)</option>
+                    </select>
+                </div>
+                <div class='info'>
+                    ℹ️ <strong>RAM tylko</strong> - logi przechowywane w pamięci, znikają po restarcie<br>
+                    <strong>RAM + FLASH</strong> - logi zapisywane do LittleFS, przetrwają restart<br>
+                    ⚠️ Tryb FLASH zużywa pamięć flash przy każdym logu!
+                </div>
+                <button type='button' onclick='saveLogsConfig()'>💾 Zapisz ustawienia logów</button>
+                <button type='button' class='danger' onclick='clearLogs()' style='margin-left: 10px;'>🗑️ Wyczyść logi</button>
+            </form>
+        </div>
+        
+        <!-- SEKCJA: Restart -->
+        <div class='card'>
+            <h3>🔄 System</h3>
+            <button type='button' class='danger' onclick='restartESP()'>🔁 Restartuj ESP32</button>
+        </div>
+    </div>
+    
+    <script>
+        function loadConfig() {
+            // WiFi
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('wifi_ssid').value = data.ssid || '';
+                    document.getElementById('wifi_dhcp').checked = data.dhcp;
+                    document.getElementById('wifi_ip').value = data.ip || '';
+                    document.getElementById('wifi_gateway').value = data.gateway || '';
+                    document.getElementById('wifi_mask').value = data.mask || '';
+                    document.getElementById('wifi_dns').value = data.dns || '';
+                    toggleStaticFields();
+                });
+            
+            // Modbus
+            fetch('/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modbus_ip').value = data.modbus_config?.ip || '192.168.1.200';
+                    document.getElementById('modbus_port').value = data.modbus_config?.port || 502;
+                    document.getElementById('modbus_unitId').value = data.modbus_config?.unitId || 1;
+                    document.getElementById('modbus_readInterval').value = data.modbus_config?.readInterval || 5000;
+                    document.getElementById('modbus_enabled').checked = data.modbus_config?.enabled !== false;
+                });
+            
+            // Grzałki (ze struktury U)
+            fetch('/api/heater_config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('heater_u_on').value = data.u_on || 252;
+                    document.getElementById('heater_u_off').value = data.u_off || 250;
+                    document.getElementById('heater_delay_off').value = data.delay_off_ms || 5000;
+                    document.getElementById('bojler_tmax').value = data.t_max || 85;
+                    document.getElementById('heater_enabled').checked = data.enabled !== false;
+                });
+            // Konfiguracja logów
+            loadLogsConfig();
+        }
+        
+        function toggleStaticFields() {
+            const dhcp = document.getElementById('wifi_dhcp').checked;
+            document.getElementById('staticIpFields').style.display = dhcp ? 'none' : 'block';
+        }
+        document.getElementById('wifi_dhcp').onchange = toggleStaticFields;
+        
+        function saveWiFi() {
+            const data = {
+                ssid: document.getElementById('wifi_ssid').value,
+                pass: document.getElementById('wifi_pass').value,
+                dhcp: document.getElementById('wifi_dhcp').checked,
+                ip: document.getElementById('wifi_ip').value,
+                gateway: document.getElementById('wifi_gateway').value,
+                mask: document.getElementById('wifi_mask').value,
+                dns: document.getElementById('wifi_dns').value
+            };
+            
+            fetch('/api/save_wifi', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccess('WiFi zapisane! ESP restartuje...');
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    showError('Błąd zapisu WiFi');
+                }
+            });
+        }
+        
+        function resetWiFi() {
+            if (confirm('Czy na pewno chcesz zresetować ustawienia WiFi?')) {
+                fetch('/api/reset_wifi', {method: 'POST'})
+                    .then(() => {
+                        showSuccess('Reset WiFi! Restart...');
+                        setTimeout(() => location.reload(), 3000);
+                    });
+            }
+        }
+        
+        function saveModbus() {
+            const data = {
+                ip: document.getElementById('modbus_ip').value,
+                port: parseInt(document.getElementById('modbus_port').value),
+                unitId: parseInt(document.getElementById('modbus_unitId').value),
+                readInterval: parseInt(document.getElementById('modbus_readInterval').value),
+                enabled: document.getElementById('modbus_enabled').checked
+            };
+            
+            fetch('/api/save_modbus', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccess('Konfiguracja Modbus zapisana!');
+                } else {
+                    showError('Błąd zapisu Modbus');
+                }
+            });
+        }
+        
+        function saveHeater() {
+            const data = {
+                u_on: parseFloat(document.getElementById('heater_u_on').value),
+                u_off: parseFloat(document.getElementById('heater_u_off').value),
+                delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
+                enabled: document.getElementById('heater_enabled').checked,
+                t_max: parseFloat(document.getElementById('bojler_tmax').value)
+            };
+            
+            fetch('/api/save_heater', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccess('Ustawienia grzałek zapisane!');
+                } else {
+                    showError('Błąd zapisu grzałek');
+                }
+            });
+        }
+         
+                function saveLogsConfig() {
+            const data = {
+                storage_mode: document.getElementById('log_storage_mode').value,
+                log_level: parseInt(document.getElementById('log_level').value)
+            };
+            
+            fetch('/api/save_logs_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccess('Ustawienia logów zapisane!');
+                } else {
+                    showError('Błąd zapisu ustawień logów');
+                }
+            });
+        }
+        
+        function clearLogs() {
+            if (confirm('Czy na pewno chcesz wyczyścić wszystkie logi?')) {
+                fetch('/api/logs/clear', {method: 'POST'})
+                    .then(() => {
+                        showSuccess('Logi wyczyszczone!');
+                    })
+                    .catch(() => {
+                        showError('Błąd czyszczenia logów');
+                    });
+            }
+        }
+        
+        function loadLogsConfig() {
+            fetch('/api/logs_config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('log_storage_mode').value = data.storage_mode || 'ram';
+                    document.getElementById('log_level').value = data.log_level || 1;
+                })
+                .catch(err => console.error('Błąd ładowania konfiguracji logów:', err));
+        }
+        
+        function restartESP() {
+            if (confirm('Czy na pewno chcesz zrestartować ESP32?')) {
+                fetch('/api/restart', {method: 'POST'});
+                showSuccess('Restartowanie ESP32...');
+                setTimeout(() => location.reload(), 5000);
+            }
+        }
+        
+        function showSuccess(msg) {
+            const el = document.getElementById('successMsg');
+            el.innerHTML = '✅ ' + msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+        
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.innerHTML = '❌ ' + msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+        
+        function loadHeaterStatus() {
+            fetch('/api/heater/status')
+                .then(response => response.json())
+                .then(data => {
+                    const checkbox = document.getElementById('heaterEnabled');
+                    checkbox.checked = data.enabled;
+                    
+                    const statusDiv = document.getElementById('heaterStatus');
+                    if (data.enabled) {
+                        statusDiv.innerHTML = '<span style="color: green;">✅ System grzania AKTYWNY</span>';
+                    } else {
+                        statusDiv.innerHTML = '<span style="color: red;">⛔ System grzania WYŁĄCZONY</span>';
+                    }
+                })
+                .catch(err => console.error('Błąd:', err));
+        }
+
+        function toggleHeater() {
+            const enabled = document.getElementById('heaterEnabled').checked;
+            const originalState = enabled;
+            
+            if (!enabled) {
+                if (!confirm('⚠️ Czy na pewno chcesz WYŁĄCZYĆ system grzania?\n\nGrzałki nie będą się załączać nawet przy wysokim napięciu!')) {
+                    document.getElementById('heaterEnabled').checked = true;
+                    return;
+                }
+            }
+            
+            fetch('/api/heater/enable', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: enabled})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadHeaterStatus();  // odśwież status
+                }
+            })
+            .catch(err => {
+                console.error('Błąd:', err);
+                document.getElementById('heaterEnabled').checked = originalState;
+            });
+        }
+
+        // Załaduj status przy starcie
+        document.addEventListener('DOMContentLoaded', loadHeaterStatus);
+        
+        loadConfig();
+    </script>
+</body>
+</html>

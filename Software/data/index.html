@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>ESP32 - Sterowanie grzałkami + Falownik</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <!-- 🔥 FAVICON – ikona w karcie przeglądarki -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔥%3C/text%3E%3C/svg%3E">
+    <style>
+        body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .value { font-size: 24px; font-weight: bold; color: #2196F3; }
+        .unit { font-size: 14px; color: #666; }
+        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .status.online { background: #4CAF50; }
+        .status.offline { background: #f44336; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button.on { background: #4CAF50; color: white; }
+        button.off { background: #f44336; color: white; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; }
+        td:first-child { font-weight: bold; }
+        .nav { text-align: right; margin-bottom: 20px; }
+        .nav a { color: #4CAF50; text-decoration: none; font-size: 16px; }
+        .nav a:hover { text-decoration: underline; }
+        .system-on { background: #4CAF50; color: white; }
+        .system-off { background: #9e9e9e; color: white; }
+        .button-disabled { background: #cccccc !important; color: #666666 !important; cursor: not-allowed !important; opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='nav'>
+            <a href='/settings'>⚙️ Ustawienia</a>
+            <a href='/logs'>📝 Logi</a>
+        </div>
+        <h1>🔧 Sterownik Grzałek + Falownik Sofar</h1>
+        
+        <div class='grid'>
+            <!-- KARTA: FALOWNIK SOFAR -->
+            <div class='card'>
+                <h3>☀️ Falownik Sofar 
+                    <span id='modbusStatus' class='status'></span>
+                    <span id='modbusStatusText' style='font-size: 12px;'></span>
+                </h3>
+                <div id='modbusData'>
+                    <p>Ładowanie danych...</p>
+                </div>
+            </div>
+            
+            <!-- KARTA: NAPIĘCIA SIECI -->
+            <div class='card'>
+                <h3>⚡ Napięcia sieciowe</h3>
+                <table>
+                    <tr><td>Faza L1:</td><td><span id='v1'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Faza L2:</td><td><span id='v2'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Faza L3:</td><td><span id='v3'>---</span> <span class='unit'>V</span></td></tr>
+                </table>
+            </div>
+            
+            <!-- KARTA: PRĄDY SIECI -->
+            <div class='card'>
+                <h3>🔌 Prądy sieciowe</h3>
+                <table>
+                    <tr><td>Faza L1:</td><td><span id='a1'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Faza L2:</td><td><span id='a2'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Faza L3:</td><td><span id='a3'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr style='border-top:2px solid #ddd;'><td><strong>Moc całkowita:</strong></td><td><strong><span id='totalPower'>---</span> <span class='unit'>W</span></strong></td></tr>
+                </table>
+            </div>
+            
+            <!-- KARTA: STRINGI PV -->
+            <div class='card'>
+                <h3>🔋 Stringi PV</h3>
+                <table>
+                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 1</strong></td></tr>
+                    <tr><td>Napięcie:</td><td><span id='pv1_v'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Prąd:</td><td><span id='pv1_a'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Moc:</td><td><span id='pv1_w'>---</span> <span class='unit'>W</span></td></tr>
+                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 2</strong></td></tr>
+                    <tr><td>Napięcie:</td><td><span id='pv2_v'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Prąd:</td><td><span id='pv2_a'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Moc:</td><td><span id='pv2_w'>---</span> <span class='unit'>W</span></td></tr>
+                    <tr style='border-top:2px solid #ddd;'><td><strong>Moc PV całkowita:</strong></td><td><strong><span id='totalPV'>---</span> <span class='unit'>W</span></strong></td></tr>
+                </table>
+            </div>
+            
+            <!-- KARTA: PRODUKCJA -->
+            <div class='card'>
+                <h3>📊 Produkcja</h3>
+                <table>
+                    <tr><td>Dzisiaj:</td><td><span id='dailyEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Całkowita:</td><td><span id='totalEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Temperatura falownika:</td><td><span id='tempInner'>---</span> <span class='unit'>°C</span></td></tr>
+                    <tr><td>Temperatura modułów:</td><td><span id='tempModule'>---</span> <span class='unit'>°C</span></td></tr>
+                </table>
+            </div>
+            
+            <!-- KARTA: STEROWANIE GRZAŁKAMI i Temperatura bojlera -->
+            <div class='card'>
+                <h3>🔥 Sterowanie grzałkami
+                    <span id='systemStatusText' style='font-size: 14px; font-weight: normal;'></span>
+                </h3>
+                <div style='background: #e8f5e9; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;'>
+                    <span style='font-size: 18px;'>🌡️ Temperatura bojlera: </span>
+                    <span id='tempBojler' style='font-size: 24px; font-weight: bold;'>---</span>
+                    <span class='unit'>°C</span>
+                    <span style='margin-left: 15px;'>| Max: <span id='tempMax'>---</span> <span class='unit'>°C</span></span>
+                    <div style='background: #e0e0e0; border-radius: 10px; height: 8px; margin-top: 8px;'>
+                        <div id='tempBar' style='background: #4CAF50; border-radius: 10px; height: 8px; width: 0%;'></div>
+                    </div>
+                </div>
+                <div style='margin-bottom: 10px; padding: 8px; background: #fff3e0; border-radius: 5px; text-align: center;'>
+                    <span>🔌 Stycznik główny: </span>
+                    <strong id='contactorState'>---</strong>
+                </div>
+                <div style='margin-bottom: 10px; padding: 8px; background: #f0f0f0; border-radius: 5px; text-align: center;'>
+                    <span>⚡ Progi napięcia: </span>
+                    <strong>U_on: <span id='u_on'>---</span> V</strong> | 
+                    <strong>U_off: <span id='u_off'>---</span> V</strong> | 
+                    <strong>Opóźnienie: <span id='delay_off'>---</span> ms</strong>
+                </div>
+                <div style='display: flex; gap: 10px; justify-content: center;'>
+                    <button id='grzalka1' class='off' style='flex:1;'>Grzałka 1 OFF</button>
+                    <button id='grzalka2' class='off' style='flex:1;'>Grzałka 2 OFF</button>
+                    <button id='grzalka3' class='off' style='flex:1;'>Grzałka 3 OFF</button>
+                </div>
+                <div id='heaterStatus' style='margin-top: 10px; font-size: 12px; text-align: center; color: #666;'></div>
+            </div>
+
+            <!-- KARTA: STATUS SYSTEMU -->
+            <div class='card'>
+                <h3>📡 Status systemu</h3>
+                <table>
+                    <tr><td>WiFi:</td><td><span id='wifiStatus'>---</span></td></tr>
+                    <tr><td>IP:</td><td><span id='ip'>---</span></td></tr>
+                    <tr><td>Uptime:</td><td><span id='uptime'>---</span></td></tr>
+                    <tr><td>Free RAM:</td><td><span id='freeHeap'>---</span> <span class='unit'>bytes</span></td></tr>                    
+                </table>
+            </div>
+            <!-- KARTA: CZAS NTP -->
+            <div class='card'>
+                <h3>🕐 Czas systemowy</h3>
+                <div style='text-align: center; padding: 10px;'>
+                    <div id='ntpDatetime' style='font-size: 20px; font-weight: bold;'>---</div>
+                    <div id='ntpDate' style='font-size: 14px; color: #666;'>---</div>
+                    <div id='ntpStatus' style='font-size: 12px; margin-top: 8px;'></div>
+                </div>
+            </div>
+
+            <!-- KARTA: O PROGRAMIE -->
+            <div class='card'>
+                <h3>ℹ️ O programie</h3>
+                <table>
+                    <tr><td style='width:100px;'> </td><td><strong><span id='firmwareName'>ST_3F_GRZ_BOJ</span></strong></tr>
+                    <tr><td>Wersja:</td><td><strong><span id='firmwareVersion'>---</span></strong></tr>
+                    <tr><td>Kompilacja:</td><td><span id='compileDatetime'>---</span></tr>
+                    <tr><td>Autor:</td><td>Mick by Deepseek</tr>
+                    <tr><td>Opis:</td><td>Sterownik grzałek 3-fazowych do obniżania napięcia na sieci <br> w celu uniknięcia wyłączenia falownika od zbyt wysokiego napięcia</tr>            
+                </table>
+            </div>
+
+            <!-- KARTA: TRYB SYMULACJI -->
+            <div class='card'>
+                <h3>🔧 Tryb symulacji</h3>
+                <label class='checkbox-group'>
+                    <input type='checkbox' id='simMode' onchange='toggleSimulation()'> Aktywny
+                </label>
+                <div id='simControls' style='display:none; margin-top:10px;'>
+                    
+                    <!-- Status Modbus -->
+                    <div style='margin-bottom:15px; padding:10px; background:#f0f0f0; border-radius:5px;'>
+                        <label class='checkbox-group'>
+                            <input type='checkbox' id='simModbusConnected' onchange='saveSimulation()'> 
+                            Modbus Online (symulowany)
+                        </label>
+                        <span id='modbusSimStatus' style='margin-left:10px; font-size:12px;'></span>
+                    </div>
+                    
+                    <!-- Napięcia -->
+                    <div class='row'>
+                        <div class='form-group'>
+                            <label>Napięcie L1 (V)</label>
+                            <input type='number' id='simV1' step='0.5' value='252.5' onchange='saveSimulation()'>
+                        </div>
+                        <div class='form-group'>
+                            <label>Napięcie L2 (V)</label>
+                            <input type='number'id='simV2' step='0.5' value='248.0' onchange='saveSimulation()'>
+                        </div>
+                        <div class='form-group'>
+                            <label>Napięcie L3 (V)</label>
+                            <input type='number' id='simV3' step='0.5' value='250.5' onchange='saveSimulation()'>
+                        </div>
+                    </div>
+                    
+                    <button onclick='saveSimulation()'>💾 Zapisz ustawienia symulacji</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let heaterSystemEnabled = true;  // przechowuje stan systemu
+
+        function fetchModbusData() {
+            fetch('/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Modbus data:', data);
+                    const connected = data.modbus?.connected || false;
+                    const statusSpan = document.getElementById('modbusStatus');
+                    const statusText = document.getElementById('modbusStatusText');
+                    
+                    if (statusSpan) {
+                        statusSpan.className = connected ? 'status online' : 'status offline';
+                    }
+                    if (statusText) {
+                        statusText.innerHTML = connected ? 'Online' : 'Offline';
+                    }
+                    
+                    if (connected && data.modbus) {
+                        // Napięcia
+                        document.getElementById('v1').innerHTML = data.modbus.grid?.v1?.toFixed(1) || '---';
+                        document.getElementById('v2').innerHTML = data.modbus.grid?.v2?.toFixed(1) || '---';
+                        document.getElementById('v3').innerHTML = data.modbus.grid?.v3?.toFixed(1) || '---';
+                        
+                        // Prądy
+                        document.getElementById('a1').innerHTML = data.modbus.grid?.a1?.toFixed(2) || '---';
+                        document.getElementById('a2').innerHTML = data.modbus.grid?.a2?.toFixed(2) || '---';
+                        document.getElementById('a3').innerHTML = data.modbus.grid?.a3?.toFixed(2) || '---';
+                        
+                        // Moc
+                        document.getElementById('totalPower').innerHTML = data.modbus.total_power?.toFixed(0) || '---';
+                        
+                        // PV
+                        document.getElementById('pv1_v').innerHTML = data.modbus.pv?.p1_voltage?.toFixed(1) || '---';
+                        document.getElementById('pv1_a').innerHTML = data.modbus.pv?.p1_current?.toFixed(2) || '---';
+                        document.getElementById('pv1_w').innerHTML = data.modbus.pv?.p1_power?.toFixed(0) || '---';
+                        document.getElementById('pv2_v').innerHTML = data.modbus.pv?.p2_voltage?.toFixed(1) || '---';
+                        document.getElementById('pv2_a').innerHTML = data.modbus.pv?.p2_current?.toFixed(2) || '---';
+                        document.getElementById('pv2_w').innerHTML = data.modbus.pv?.p2_power?.toFixed(0) || '---';
+                        document.getElementById('totalPV').innerHTML = data.modbus.pv?.total_power?.toFixed(0) || '---';
+                        
+                        // Produkcja
+                        document.getElementById('dailyEnergy').innerHTML = data.modbus.daily_energy?.toFixed(2) || '---';
+                        document.getElementById('totalEnergy').innerHTML = data.modbus.total_energy?.toFixed(0) || '---';
+                        document.getElementById('tempInner').innerHTML = data.modbus.temp_inner || '---';
+                        document.getElementById('tempModule').innerHTML = data.modbus.temp_module || '---';
+                    }
+                    
+                    // Konfiguracja grzałek (ze struktury U)
+                    if (data.heater_config) {
+                        document.getElementById('u_on').innerHTML = data.heater_config.u_on?.toFixed(1) || '---';
+                        document.getElementById('u_off').innerHTML = data.heater_config.u_off?.toFixed(1) || '---';
+                    }
+                })
+                .catch(err => console.error('Błąd fetch Modbus:', err));
+        }
+        
+        function fetchSystemStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status data:', data);
+                    document.getElementById('wifiStatus').innerHTML = data.wifi_connected ? '✅ Połączone' : '❌ Rozłączone';
+                    document.getElementById('ip').innerHTML = data.ip || '---';
+                    document.getElementById('uptime').innerHTML = data.uptime || '---';
+                    document.getElementById('freeHeap').innerHTML = data.free_heap || '---';
+                    
+                    // ========== DODANE: WERSJA OPROGRAMOWANIA ==========
+                    const fwVersionSpan = document.getElementById('firmwareVersion');
+                    const compileSpan = document.getElementById('compileDatetime');
+                    if (fwVersionSpan) fwVersionSpan.innerHTML = data.firmware_version || '---';
+                    if (compileSpan) compileSpan.innerHTML = data.compile_datetime || '---';
+                    
+                    // Temperatura bojlera
+                    const temp = data.temp_bojler || 0;
+                    const tempMax = data.temp_max || 85;
+                    document.getElementById('tempBojler').innerHTML = temp.toFixed(1);
+                    document.getElementById('tempMax').innerHTML = tempMax;
+                    
+                    // Pasek temperatury
+                    const percent = Math.min(100, (temp / tempMax) * 100);
+                    const bar = document.getElementById('tempBar');
+                    if (bar) {
+                        bar.style.width = percent + '%';
+                        if (percent > 90) {
+                            bar.style.background = '#f44336';
+                        } else if (percent > 75) {
+                            bar.style.background = '#ff9800';
+                        } else {
+                            bar.style.background = '#4CAF50';
+                        }
+                    }
+                    
+                    // Grzałki
+                    const g1 = document.getElementById('grzalka1');
+                    const g2 = document.getElementById('grzalka2');
+                    const g3 = document.getElementById('grzalka3');
+                    
+                    if (g1) {
+                        g1.innerHTML = data.grzalka1 ? '🔥 Grzałka 1 ON' : '❄️ Grzałka 1 OFF';
+                        g1.className = data.grzalka1 ? 'on' : 'off';
+                    }
+                    if (g2) {
+                        g2.innerHTML = data.grzalka2 ? '🔥 Grzałka 2 ON' : '❄️ Grzałka 2 OFF';
+                        g2.className = data.grzalka2 ? 'on' : 'off';
+                    }
+                    if (g3) {
+                        g3.innerHTML = data.grzalka3 ? '🔥 Grzałka 3 ON' : '❄️ Grzałka 3 OFF';
+                        g3.className = data.grzalka3 ? 'on' : 'off';
+                    }
+
+                    // Stan stycznika
+                    const contactorSpan = document.getElementById('contactorState');
+                    if (contactorSpan) {
+                        contactorSpan.innerHTML = data.contactor ? '🔌 ZAŁĄCZONY' : '⭕ WYŁĄCZONY';
+                        contactorSpan.style.color = data.contactor ? '#4CAF50' : '#666';
+                    }
+
+                    
+                    // Dodatkowy komunikat o blokadzie temperaturowej
+                    const heaterStatus = document.getElementById('heaterStatus');
+                    if (heaterStatus) {
+                        if (temp >= tempMax) {
+                            heaterStatus.innerHTML = '⚠️ Temperatura osiągnęła maksimum! Grzałki zablokowane.';
+                            heaterStatus.style.color = '#f44336';
+                        } else if (temp >= tempMax - 2) {
+                            heaterStatus.innerHTML = '⚠️ Temperatura blisko maksimum! Za chwilę blokada grzałek.';
+                            heaterStatus.style.color = '#ff9800';
+                        } else {
+                            heaterStatus.innerHTML = '✅ Grzałki mogą być załączane (temperatura bezpieczna)';
+                            heaterStatus.style.color = '#4CAF50';
+                        }
+                    }
+                })
+                .catch(err => console.error('Błąd fetch status:', err));
+        }
+        
+        function toggleGrzalka(num) {
+            fetch('/api/grzalka' + num, {method: 'POST'})
+                .then(() => fetchSystemStatus())
+                .catch(err => console.error('Błąd toggle grzałki:', err));
+        }
+
+
+        function fetchNTPTime() {
+            fetch('/api/time')
+                .then(response => response.json())
+                .then(data => {
+                    const datetimeSpan = document.getElementById('ntpDatetime');
+                    const dateSpan = document.getElementById('ntpDate');
+                    const statusSpan = document.getElementById('ntpStatus');
+                    
+                    if (data.synced) {
+                        datetimeSpan.innerHTML = data.time || '---';
+                        dateSpan.innerHTML = data.date || '---';
+                        statusSpan.innerHTML = '✅ Zsynchronizowany z NTP';
+                        statusSpan.style.color = '#4CAF50';
+                    } else {
+                        datetimeSpan.innerHTML = '--- : --- : ---';
+                        dateSpan.innerHTML = '---- -- --';
+                        statusSpan.innerHTML = '⚠️ Czekam na synchronizację NTP...';
+                        statusSpan.style.color = '#ff9800';
+                    }
+                })
+                .catch(err => {
+                    console.error('Błąd fetch NTP:', err);
+                    const statusSpan = document.getElementById('ntpStatus');
+                    statusSpan.innerHTML = '❌ Błąd odczytu czasu';
+                    statusSpan.style.color = '#f44336';
+                });
+        }
+
+        
+        // Inicjalizacja przycisków
+        const g1 = document.getElementById('grzalka1');
+        const g2 = document.getElementById('grzalka2');
+        const g3 = document.getElementById('grzalka3');
+        if (g1) g1.onclick = () => toggleGrzalka(1);
+        if (g2) g2.onclick = () => toggleGrzalka(2);
+        if (g3) g3.onclick = () => toggleGrzalka(3);
+        
+        // Start
+        fetchModbusData();
+        fetchSystemStatus();
+        fetchNTPTime()
+        setInterval(fetchModbusData, 3000);
+        setInterval(fetchSystemStatus, 5000);
+        setInterval(fetchNTPTime, 10000);
+
+        // ========== FUNKCJE DO TRYBU SYMULACJI ==========
+        
+        function loadSimulation() {
+            fetch('/api/simulation')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('simMode').checked = data.enabled;
+                    document.getElementById('simModbusConnected').checked = data.modbus_connected;
+                    document.getElementById('simV1').value = data.voltage1;
+                    document.getElementById('simV2').value = data.voltage2;
+                    document.getElementById('simV3').value = data.voltage3;
+                    
+                    const simControls = document.getElementById('simControls');
+                    simControls.style.display = data.enabled ? 'block' : 'none';
+                    
+                    // Aktualizuj status
+                    updateModbusSimStatus(data.modbus_connected);
+                });
+        }
+
+        function updateModbusSimStatus(connected) {
+            const statusSpan = document.getElementById('modbusSimStatus');
+            if (connected) {
+                statusSpan.innerHTML = '🟢 Symulowany Modbus ONLINE';
+                statusSpan.style.color = 'green';
+            } else {
+                statusSpan.innerHTML = '🔴 Symulowany Modbus OFFLINE';
+                statusSpan.style.color = 'red';
+            }
+        }
+
+        function toggleSimulation() {
+            const enabled = document.getElementById('simMode').checked;
+            document.getElementById('simControls').style.display = enabled ? 'block' : 'none';
+            saveSimulation();
+        }
+
+        function saveSimulation() {
+            const data = {
+                enabled: document.getElementById('simMode').checked,
+                modbus_connected: document.getElementById('simModbusConnected').checked,
+                voltage1: parseFloat(document.getElementById('simV1').value),
+                voltage2: parseFloat(document.getElementById('simV2').value),
+                voltage3: parseFloat(document.getElementById('simV3').value)
+            };
+            
+            fetch('/api/simulation', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(() => {
+                updateModbusSimStatus(data.modbus_connected);
+            });
+        }
+
+        function loadHeaterStatus() {
+            fetch('/api/heater/status')
+                .then(response => response.json())
+                .then(data => {
+                    heaterSystemEnabled = data.enabled;
+                    updateSystemBadge(data.enabled);
+                    updateHeaterButtonsState(data.enabled);
+                    
+                    const statusDiv = document.getElementById('heaterStatus');
+                    if (data.enabled) {
+                        statusDiv.innerHTML = '<span style="color: green;">✅ System grzania AKTYWNY – grzałki reagują na napięcie</span>';
+                    } else {
+                        statusDiv.innerHTML = '<span style="color: red;">⛔ System grzania WYŁĄCZONY – grzałki NIE będą się załączać</span>';
+                    }
+                })
+                .catch(err => console.error('Błąd:', err));
+        }
+
+        function updateSystemBadge(enabled) {
+            const statusSpan = document.getElementById('systemStatusText');
+            if (enabled) {
+                statusSpan.innerHTML = '<span style="color: #4CAF50;">✅ Aktywne</span>';
+            } else {
+                statusSpan.innerHTML = '<span style="color: #f44336;">❌ Wyłączone</span>';
+            }
+        }
+
+        function updateHeaterButtonsState(systemEnabled) {
+            const buttons = ['grzalka1', 'grzalka2', 'grzalka3'];
+            buttons.forEach(btn => {
+                const button = document.getElementById(btn);
+                if (button) {
+                    if (!systemEnabled) {
+                        button.disabled = true;
+                        button.style.opacity = '0.5';
+                        button.style.cursor = 'not-allowed';
+                        button.classList.add('off');  // zachowaj szary wygląd
+                    } else {
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                        button.style.cursor = 'pointer';
+                        // przywróć odpowiednią klasę w zależności od stanu grzałki
+                        const isOn = button.innerHTML.includes('ON');
+                        button.className = isOn ? 'on' : 'off';
+                    }
+                }
+            });
+        }
+
+    // Załaduj przy starcie
+    loadSimulation();
+    loadHeaterStatus();
+    </script>
+</body>
+</html>

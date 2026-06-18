@@ -33,6 +33,9 @@ void HeaterControl::begin() {
   digitalWrite(LED_GRZALKA3_pin, OFF);
   digitalWrite(STYCZNIK_PIN, STYCZNIK_OFF);  // HIGH = stycznik wyłączony
 
+  Z.heater1_flag = false;  // Aktualizacja flag dla strony WWW
+  Z.heater2_flag = false; 
+  Z.heater3_flag = false;
   
   // Inicjalizacja stanu stycznika
   stycznik.state = false;
@@ -325,7 +328,7 @@ void HeaterControl::updateHeaterState(int index) {
     
     float voltage = (index == 0 ? modbusData.gridVoltage1 : 
                     (index == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
-    /*
+    
     Serial.printf("[%s] %s (napięcie: %.1fV, stycznik: %s)\n", 
                   phaseName,
                   newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
@@ -333,10 +336,10 @@ void HeaterControl::updateHeaterState(int index) {
                   stycznik.state ? "ON" : "OFF");
     LOG_INFO("HeaterControl", "[%s] %s (napięcie: %.1fV, stycznik: %s)", 
              phaseName,
-             newState ? "ZAŁĄCZONA" : "WYŁĄCZONA",
+             newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
              voltage,
              stycznik.state ? "ON" : "OFF");
-    */         
+             
   }
 }
 // ========== ZMIENIONA FUNKCJA update() ==========
@@ -365,9 +368,10 @@ void HeaterControl::update() {
       Z.heater1_flag = false;
       Z.heater2_flag = false;
       Z.heater3_flag = false;
+      LOG_INFO("HeaterControl:Update", "Brak danych Modbus - wyłączam wszystko!!!");
     }
     if (stycznik.state) turnOffContactor();
-    LOG_INFO("HeaterControl:Update", "Brak danych Modbus - wyłączam wszystko!");
+    LOG_INFO("HeaterControl:Update", "Brak danych Modbus - wyłączam styznik!!!");
     return;
   }
   
@@ -395,9 +399,10 @@ void HeaterControl::update() {
       Z.heater1_flag = false;
       Z.heater2_flag = false;
       Z.heater3_flag = false;
+      LOG_INFO("HeaterControl:Update", "Temperatura %.1f°C niebezpieczna - wyłączam grzałki!!!", Z.T_current);
     }
     if (stycznik.state) turnOffContactor();
-    LOG_INFO("HeaterControl:Update", "Temperatura %.1f°C niebezpieczna - wyłączam grzałki!", Z.T_current);
+    LOG_INFO("HeaterControl:Update", "Temperatura %.1f°C niebezpieczna - wyłączam styznik!!!", Z.T_current);
     return;
   }
   

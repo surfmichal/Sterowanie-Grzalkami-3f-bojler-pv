@@ -1,0 +1,38 @@
+{
+"wifi":   { "ip": "address_ip", 
+            "gate": "gateway_ip", 
+            "mask": "255.255.255.0", 
+            "dns" : "dns_ip",
+            "ssid": "ssid",
+            "pass": "password",
+            "dhcp": false, 
+            "active": true},
+
+"modbus": {
+            "ip": "modbus_ip",
+            "port": 502,
+            "unitId": 1,
+            "readInterval": 1000,
+            "enabled": true},
+
+"Ustawienia": {
+            "Ugrid_on": 253.0,
+            "Ugrid_off": 251.0,
+            "HeaterDelay_off_ms": 5000,
+            "bojlerTmax": 80.0,
+            "serwer_www_port": 80
+        },
+           
+"ftp_wsw":  { "ip": "ftp_ip",
+               "user": "username",
+               "pass": "password",
+               "file_name": "file.txt",
+                "active": true },
+
+  "ntp": {
+    "server": "pool.ntp.org",
+    "gmt_offset": 3600,
+    "daylight_offset": 3600,
+    "timezone": "CET-1CEST-2,M3.5.0/2,M10.5.0/3"
+  }            
+}

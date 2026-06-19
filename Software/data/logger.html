@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>ESP32 - Logi systemowe</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 0; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .container { max-width: 1400px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        h1 { color: #4CAF50; margin: 0; }
+        .controls { display: flex; gap: 10px; }
+        button { padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        button.home { background-color: #2196F3; }
+        button.home:hover { background-color: #0b7dda; }
+        .refresh { background: #4CAF50; color: white; }
+        .clear { background: #f44336; color: white; }
+        .download { background: #2196F3; color: white; }
+        .refresh:hover { background: #45a049; }
+        .clear:hover { background: #da190b; }
+        .download:hover { background: #0b7dda; }
+        .log-container { 
+            background: #2d2d2d; 
+            border-radius: 10px; 
+            padding: 15px; 
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .log-line { 
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border-bottom: 1px solid #3d3d3d;
+            padding: 4px 0;
+        }
+        .log-line:hover { background: #3d3d3d; }
+        .filter-bar { margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .filter-bar input { padding: 8px; border-radius: 5px; border: 1px solid #555; background: #3d3d3d; color: white; width: 200px; }
+        .filter-bar select { padding: 8px; border-radius: 5px; border: 1px solid #555; background: #3d3d3d; color: white; }
+        .level-DBG { color: #9cdcfe; }
+        .level-INF { color: #4ec9b0; }
+        .level-WRN { color: #dcdcaa; }
+        .level-ERR { color: #f48771; }
+        .stats { margin-top: 20px; padding: 10px; background: #2d2d2d; border-radius: 5px; font-size: 12px; }
+        .auto-refresh { display: flex; align-items: center; gap: 5px; }
+        .auto-refresh input { width: auto; }        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class='container'>
+
+        <div class='header'>
+            <h1>📋 Logi systemowe</h1>
+            <div class='controls'>
+                <button class='download' onclick='HomePage()'>🏠 Strona główna</button>
+                <button class='download' onclick='downloadLogs()'>💾 Pobierz logi</button>
+                <button class='refresh' onclick='refreshLogs()'>🔄 Odśwież</button>
+                <button class='clear' onclick='clearLogs()'>🗑️ Wyczyść</button>
+            </div>
+        </div>
+        
+        <div class='filter-bar'>
+            <input type='text' id='searchInput' placeholder='🔍 Filtruj...' onkeyup='filterLogs()'>
+            <select id='levelFilter' onchange='filterLogs()'>
+                <option value='all'>Wszystkie poziomy</option>
+                <option value='DBG'>DEBUG</option>
+                <option value='INF'>INFO</option>
+                <option value='WRN'>WARN</option>
+                <option value='ERR'>ERROR</option>
+            </select>
+            <div class='auto-refresh'>
+                <input type='checkbox' id='autoRefresh' checked> Auto-odświeżanie (5s)
+            </div>
+        </div>
+        
+        <div class='log-container' id='logContainer'>
+            <div style='text-align: center; padding: 40px;'>Ładowanie logów...</div>
+        </div>
+        
+        <div class='stats' id='stats'>
+            <!-- Statystyki zostaną wypełnione JavaScript -->
+        </div>
+    </div>
+    
+    <script>
+        let logsData = [];
+        
+        function loadLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    logsData = data.logs;
+                    displayLogs();
+                    updateStats(data);
+                })
+                .catch(err => {
+                    document.getElementById('logContainer').innerHTML = '<div style="color: #f48771;">❌ Błąd ładowania logów: ' + err + '</div>';
+                });
+        }
+        
+        function displayLogs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const levelFilter = document.getElementById('levelFilter').value;
+            
+            let filtered = logsData;
+            
+            // Filtruj po poziomie
+            if (levelFilter !== 'all') {
+                filtered = filtered.filter(log => log.includes('[' + levelFilter + ']'));
+            }
+            
+            // Filtruj po tekście
+            if (searchTerm) {
+                filtered = filtered.filter(log => log.toLowerCase().includes(searchTerm));
+            }
+            
+            // Wyświetl
+            const container = document.getElementById('logContainer');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px;">📭 Brak logów spełniających kryteria</div>';
+                return;
+            }
+            
+            let html = '';
+            filtered.forEach(log => {
+                let levelClass = 'level-INF';
+                if (log.includes('[DBG]')) levelClass = 'level-DBG';
+                else if (log.includes('[INF]')) levelClass = 'level-INF';
+                else if (log.includes('[WRN]')) levelClass = 'level-WRN';
+                else if (log.includes('[ERR]')) levelClass = 'level-ERR';
+                
+                // Escaping HTML
+                let escapedLog = log.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                html += `<div class="log-line ${levelClass}">${escapedLog}</div>`;
+            });
+            
+            container.innerHTML = html;
+            
+            // Auto-scroll na dół
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function updateStats(data) {
+            const stats = document.getElementById('stats');
+            const counts = { DBG: 0, INF: 0, WRN: 0, ERR: 0 };
+            
+            data.logs.forEach(log => {
+                if (log.includes('[DBG]')) counts.DBG++;
+                else if (log.includes('[INF]')) counts.INF++;
+                else if (log.includes('[WRN]')) counts.WRN++;
+                else if (log.includes('[ERR]')) counts.ERR++;
+            });
+            
+            stats.innerHTML = `
+                📊 Statystyki: 
+                🔵 DEBUG: ${counts.DBG} | 
+                🟢 INFO: ${counts.INF} | 
+                🟠 WARN: ${counts.WRN} | 
+                🔴 ERROR: ${counts.ERR} |
+                📄 Razem: ${data.logs.length} | 
+                💾 Rozmiar: ${(data.size / 1024).toFixed(1)} KB
+            `;
+        }
+
+        function HomePage() {
+            window.location.href = '/';
+        }
+        
+        function refreshLogs() {
+            loadLogs();
+        }
+        
+        function downloadLogs() {
+            window.location.href = '/api/logs/download';
+        }
+        
+        function clearLogs() {
+            if (confirm('Czy na pewno chcesz wyczyścić wszystkie logi?')) {
+                fetch('/api/logs/clear', { method: 'POST' })
+                    .then(() => {
+                        loadLogs();
+                        showNotification('Logi wyczyszczone!');
+                    });
+            }
+        }
+        
+        function showNotification(msg) {
+            const container = document.getElementById('logContainer');
+            const notif = document.createElement('div');
+            notif.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#4CAF50; color:white; padding:10px 20px; border-radius:5px; z-index:1000;';
+            notif.innerHTML = msg;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
+        
+        function filterLogs() {
+            displayLogs();
+        }
+        
+        // Auto-odświeżanie
+        let refreshInterval;
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            if (refreshInterval) clearInterval(refreshInterval);
+            
+            if (checkbox.checked) {
+                refreshInterval = setInterval(loadLogs, 5000);
+            }
+        }
+        
+        document.getElementById('autoRefresh').onchange = setupAutoRefresh;
+        
+        // Start
+        loadLogs();
+        setupAutoRefresh();
+    </script>
+</body>
+</html>

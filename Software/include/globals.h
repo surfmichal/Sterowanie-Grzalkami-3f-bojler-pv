@@ -17,17 +17,18 @@
 // ========== DEFINICJE PINÓW ==========
 // (Twoje definicje pozostają bez zmian)
 #define LED_BUILTIN_pin 2
-#define LED_AL1_pin 15
-#define LED_GRZALKA1_pin 5
+#define LED_GRZALKA1_pin 22
 #define LED_GRZALKA2_pin 18
 #define LED_GRZALKA3_pin 19
 #define GRZALKA1_pin 13
 #define GRZALKA2_pin 14
 #define GRZALKA3_pin 27
 //#define DAC_pin 34      // UWAGA: GPIO34 jest TYLKO WEJŚCIOWE!
-#define ONE_WIRE_pin 4
+#define ONE_WIRE_A_pin 4
+#define ONE_WIRE_B_pin 16
 #define RESET_WIFI_pin 0
-#define STYCZNIK_PIN 5        // GPIO5 - sterowanie stycznikiem
+#define STYCZNIK_PIN 5          // GPIO5 - sterowanie stycznikiem
+#define STYCZNIK_STAN_PIN 21    // wejście monitorujące stan napięcia sterującego stycznikiem przechodzi przez termostat i przekaźnik
 #define STYCZNIK_DELAY_ON 500   // ms - czas po załączeniu stycznika przed triakami
 #define STYCZNIK_DELAY_OFF 500  // ms - czas po wyłączeniu triaków przed stycznikiem
 

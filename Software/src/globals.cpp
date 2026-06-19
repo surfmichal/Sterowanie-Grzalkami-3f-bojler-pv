@@ -6,21 +6,23 @@ Bledy       E_byle  = {0};
 Alarmy      A_teraz = {0};
 Alarmy      A_byle  = {0};
 Ustawienia  U       = {0};
-Ftp_1       ftp_mt  = {0};
-Ftp_1       ftp_wsw = {0};
 WifiConfig  wifi_ust= {0};
 Zmienne     Z       = {0};
 APConfig    ap_config   = {0};
 ModbusData   modbusData = {0};
 ModbusConfig modbusCfg  = {0};
-HeaterState heater1_state = {false, 0, false};
-HeaterState heater2_state = {false, 0, false};
-HeaterState heater3_state = {false, 0, false};
+HeaterState heater1_state = {false, 0, 0, false, false};
+HeaterState heater2_state = {false, 0, 0, false, false};
+HeaterState heater3_state = {false, 0, 0, false, false};
 StycznikState stycznik = {false, false, 0, false, false};
 CzasNTP czasNTP = {0, 0, 0, 0, 0, 0, 0, 0, 0, false};
 LicznikiCzasu liczniki = {0};
-// Inicjalizacja bufora FIFO
 TemperatureFIFO tempFIFO = {{0}, 0, 0, 0};
+Temperatury T = {
+  .temperatura_bojlera = 0,
+  .bojler = {0.0f, false, {0}, "Bojler", 0},
+  .radiator = {0.0f, false, {0}, "Radiator", 0}
+};
 unsigned long lastHeaterCheckTime = 0;
 
 // ========== DEFINICJE STAŁYCH DO SYMULACJI ==========

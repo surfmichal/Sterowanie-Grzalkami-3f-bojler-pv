@@ -23,7 +23,7 @@ bool loadStatistics() {
   String content = file.readString();
   file.close();
   
-  DynamicJsonDocument doc(256);
+  DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, content);
   
   if (error) {
@@ -60,7 +60,7 @@ bool saveDailyStatistics() {
   liczniki.zalaczenia_total_grzalka3 += liczniki.zalaczenia_dzis_grzalka3;
   
   // Przygotuj JSON do zapisu (WSZYSTKIE DANE)
-  DynamicJsonDocument doc(512);
+  DynamicJsonDocument doc(1024);
   
   // DZIŚ (wartości z tego dnia)
   doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;
@@ -198,7 +198,7 @@ void checkAndSaveDaily() {
 
 // ========== POBRZ STATYSTYKI W FORMACIE JSON ==========
 String getStatisticsJSON() {
-  DynamicJsonDocument doc(512);
+  DynamicJsonDocument doc(1024);
   
   // Dziś
   doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;

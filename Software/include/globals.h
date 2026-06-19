@@ -13,6 +13,8 @@
 #define STYCZNIK_OFF HIGH
 #define GRZALKA_ON   LOW
 #define GRZALKA_OFF  HIGH
+#define LED_ON       LOW
+#define LED_OFF      HIGH
 
 // ========== DEFINICJE PINÓW ==========
 // (Twoje definicje pozostają bez zmian)
@@ -67,22 +69,17 @@ struct Zmienne {
   bool T_sensor_ok;      // Czy czujnik działa  
 };
 
-struct Ustawienia {   
-  int8_t serwer_www_port;        // port serwera www
-  int8_t bojlerTmax;              // maksymalna temperatura bojlera    
-  float Ugrid_on;                 // napiecie zalaczenia
-  float Ugrid_off;                // napięcie wylaczenia
-  uint16_t HeaterDelay_off_ms;    // czas do wylaczenia grzalki  
-  uint16_t HeaterDelay_on_ms;     // czas do zalaczenia grzalki
-  bool HeaterEnabled;              // czy sterowanie grzalkami jest aktywne
+struct Ustawienia {
+  bool HeaterEnabled;           // ← Aktywacja systemu grzałek (true=aktywne, false=nieaktywne)
+  float Ugrid_on;               // ← float
+  float Ugrid_off;              // ← float
+  uint16_t HeaterDelay_on_ms;   // ← uint16_t
+  uint16_t HeaterDelay_off_ms;  // ← uint16_t
+  float bojlerTmax;             // ← float
+  float radiatorTmax;           // ← float 
+  bool radiatorT_critical;      // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
+  uint8_t serwer_www_port;      // ← uint8_t lub int
 };
-
-struct Czujnik {
-  char name[15];
-  char id[40];
-  float t;
-};
-
 // ========== STRUKTURA CZASU ==========
 struct CzasNTP {
   int year;           // rok (np. 2025)
@@ -97,13 +94,6 @@ struct CzasNTP {
   bool synced;        // czy czas jest zsynchronizowany
 };
 
-struct Ftp_1 {
-  char ip[16];
-  char user[30];
-  char pass[30];
-  char file_name[30];
-};
-
 struct WifiConfig {
   char ip[16];
   char gate[16];
@@ -115,15 +105,11 @@ struct WifiConfig {
   bool active;
 };
 
-
-//struct BojlerState {
-//  float T_current;       // Aktualna temperatura (°C)
-//  bool T_sensor_ok;      // Czy czujnik działa
-//};
-
 struct HeaterState {
   bool state;                 // Aktualny stan (true=ON)
+  unsigned long turnOnTime;   // Czas kiedy należy włączyć
   unsigned long turnOffTime;  // Czas kiedy należy wyłączyć
+  bool waitingToTurnOn;       // Czy czeka na włączenie
   bool waitingToTurnOff;      // Czy czeka na wyłączenie
 };
 
@@ -237,6 +223,33 @@ struct TemperatureFIFO {
   uint16_t last_index;               // ostatni odczytany indeks (do API)
 };
 
+
+// ========== STRUKTURA DLA CZUJNIKA TEMPERATURY ==========
+struct CzujnikTemp {
+  float temperatura;
+  bool ok;
+  uint8_t adres[8];
+  char nazwa[20];
+  unsigned long lastReadTime;
+};
+
+// ========== STRUKTURA TEMPERATUR (rozszerzona) ==========
+struct Temperatury {
+  // Dla kompatybilności (istniejący kod)
+  int8_t temperatura_bojlera;
+  
+  // Nowe czujniki
+  CzujnikTemp bojler;
+  CzujnikTemp radiator;
+  
+  // Istniejące tablice (zostawiamy)
+  float temperatury[2][12];
+  float dT5s[6];
+  float dT10s[6];
+  float dT30s[6];
+  float dT60s[6];
+};
+
 // ========== SYMULACJA ==========
 extern bool simulationMode;
 extern bool simulationModbusConnected; 
@@ -251,13 +264,13 @@ extern Bledy       E_teraz;
 extern Bledy       E_byle;
 extern Alarmy      A_teraz;
 extern Alarmy      A_byle;
-extern Ftp_1       ftp_wsw;
 extern WifiConfig  wifi_ust;
 extern ModbusData  modbusData;
 extern ModbusConfig modbusCfg;
 extern APConfig    ap_config;
 extern Ustawienia  U;
 extern Zmienne     Z;
+extern Temperatury T;
 extern HeaterState heater1_state;
 extern HeaterState heater2_state;
 extern HeaterState heater3_state;

@@ -10,6 +10,7 @@
 #include "statistics.h"
 #include "temperature_fifo.h"
 #include <esp_task_wdt.h>
+#include "onewire_manager.h"
 
 
 // Handles zadań
@@ -18,9 +19,10 @@ TaskHandle_t taskLEDHandle = NULL;
 TaskHandle_t taskAlarmHandle = NULL;
 TaskHandle_t taskTemperatureHandle = NULL;
 
-// ========== KONFIGURACJA DS18B20 ==========
-OneWire oneWire(ONE_WIRE_pin);
-DallasTemperature ds18b20(&oneWire);
+// ========== DEFINICJE CZUJNIKÓW ==========
+OneWireManager sensorBojler(ONE_WIRE_A_pin);
+OneWireManager sensorRadiator(ONE_WIRE_B_pin);
+
 HeaterControl heaterControl;
 
 // Zmienne współdzielone między zadaniami (volatile dla bezpieczeństwa)
@@ -59,24 +61,21 @@ void taskLED(void* parameter) {
 
 // ========== ZADANIE 2: ALARM (dioda alarmowa z wzorami) ==========
 void taskAlarm(void* parameter) {
-  pinMode(LED_AL1_pin, OUTPUT);
-  digitalWrite(LED_AL1_pin, LOW);
-  
   while (true) {
     WDT_RESET();  // 🔥 KOPNIJ WATCHDOGA
     if (alarmTriggered) {
       // Szybkie miganie przy alarmie
-      digitalWrite(LED_AL1_pin, HIGH);
+      //digitalWrite(LED_AL1_pin, HIGH);
       vTaskDelay(100 / portTICK_PERIOD_MS);
-      digitalWrite(LED_AL1_pin, LOW);
+      //digitalWrite(LED_AL1_pin, LOW);
       vTaskDelay(100 / portTICK_PERIOD_MS);
     } else {
-      digitalWrite(LED_AL1_pin, LOW);
+      //digitalWrite(LED_AL1_pin, LOW);
       vTaskDelay(500 / portTICK_PERIOD_MS);
     }
   }
 }
-
+ 
 // ========== ZADANIE 3: MONITOR WiFi (z próbą ponownego połączenia) ==========
 void taskWiFiMonitor(void* parameter) {
   TaskParams* params = (TaskParams*)parameter;
@@ -110,59 +109,63 @@ void taskWiFiMonitor(void* parameter) {
   }
 }
 
-// ========== ZADANIE 4: ODCZYT TEMPERATURY ==========
+// ========== ZADANIE 4: ODCZYT TEMPERATUR Z WSZYSTKICH CZUJNIKÓW ==========
 void taskTemperature(void* parameter) {
-  // Inicjalizacja DS18B20
-  ds18b20.begin();
+  sensorBojler.begin();
+  sensorRadiator.begin();
   
-  // Sprawdź czy sensor jest podłączony
-  int deviceCount = ds18b20.getDeviceCount();
-  if (deviceCount == 0) {
-    Serial.println("⚠️ Błąd: Nie znaleziono czujnika DS18B20 na pinie ONE_WIRE_pin!");
-    LOG_INFO("DS18B20", "Nie znaleziono czujnika DS18B20 na pinie ONE_WIRE_pin!");
+  int countBojler = sensorBojler.getDeviceCount();
+  int countRadiator = sensorRadiator.getDeviceCount();
+  
+  if (countBojler > 0) {
+    T.bojler.ok = true;
+    Serial.println("✅ Czujnik bojlera: podłączony");
   } else {
-    Serial.printf("✅ Znaleziono %d czujnik(i) DS18B20\n", deviceCount);
-    LOG_INFO("DS18B20", "Znaleziono %d czujnik(i) DS18B20", deviceCount);
-    
-    // Wyświetl adresy czujników
-    for (int i = 0; i < deviceCount; i++) {
-      DeviceAddress address;
-      ds18b20.getAddress(address, i);
-      Serial.printf("  Czujnik %d: ", i);
-      for (uint8_t j = 0; j < 8; j++) {
-        Serial.printf("%02X", address[j]);
-      }
-      Serial.println();
-    }
+    T.bojler.ok = false;
+    Serial.println("⚠️ Czujnik bojlera: NIE podłączony");
+  }
+  
+  if (countRadiator > 0) {
+    T.radiator.ok = true;
+    Serial.printf("✅ Czujnik radiatora: podłączony (krytyczny: %s)\n", 
+                  U.radiatorT_critical ? "TAK" : "NIE");
+  } else {
+    T.radiator.ok = false;
+    Serial.printf("⚠️ Czujnik radiatora: NIE podłączony (krytyczny: %s)\n", 
+                  U.radiatorT_critical ? "TAK" : "NIE");
   }
   
   while (true) {
-    WDT_RESET();  // 🔥 KOPNIJ WATCHDOGA
-    // Rozpocznij konwersję temperatury na wszystkich czujnikach
-    ds18b20.requestTemperatures();
+    WDT_RESET();
     
-    // Odczytaj temperaturę z pierwszego czujnika (indeks 0)
-    float tempC = ds18b20.getTempCByIndex(0);
-    
-    // Sprawdź czy odczyt jest poprawny (DEVICE_DISCONNECTED_C = -127)
-    if (tempC != DEVICE_DISCONNECTED_C) {
-      // Zapisz do globalnej struktury Temperatury
-      Z.T_current = (int8_t)tempC;
-      LOG_INFO("DS18B20", "Zmierzono temperaturę bojlera %.1f°C", Z.T_current);
-      
-      // Debug co 30 sekund
-      static unsigned long lastPrint = 0;
-      if (millis() - lastPrint > 30000) {
-        Serial.printf("🌡️ Temperatura bojlera: %.1f°C\n", tempC);
-        lastPrint = millis();
+    // === CZUJNIK BOJLERA ===
+    if (countBojler > 0) {
+      sensorBojler.requestTemperatures();
+      float temp = sensorBojler.readTemperature(0);
+      if (temp != DEVICE_DISCONNECTED_C) {
+        T.bojler.temperatura = temp;
+        T.temperatura_bojlera = (int8_t)temp;
+        T.bojler.ok = true;
+      } else {
+        T.bojler.ok = false;
       }
-    } else {
-      Serial.println("⚠️ Błąd odczytu DS18B20 - czujnik nie odpowiada!");
-      LOG_INFO("DS18B20", "Problem z pomiarem temperatury");
-      Z.T_current = -127;
     }
     
-    // Czekaj 5 sekund między odczytami
+    // === CZUJNIK RADIATORA ===
+    if (countRadiator > 0) {
+      sensorRadiator.requestTemperatures();
+      float temp = sensorRadiator.readTemperature(0);
+      if (temp != DEVICE_DISCONNECTED_C) {
+        T.radiator.temperatura = temp;
+        T.radiator.ok = true;
+      } else {
+        T.radiator.ok = false;
+      }
+    } else {
+      // Brak czujnika – ustaw domyślną temperaturę (bezpieczną)
+      T.radiator.ok = false;      
+    }
+    
     vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 }
@@ -174,45 +177,36 @@ void taskHeaterControl(void* parameter) {
   
   // Wczytaj konfigurację z pliku
   heaterControl.setThresholds(U.Ugrid_on, U.Ugrid_off);
-  heaterControl.setTurnOffDelay(U.HeaterDelay_off_ms);  // Zmiana nazwy
-  //heaterControl.enableSystem(heater_config.enabled);
-  U.bojlerTmax = 80.0; // Z config.json
-
-    
+  heaterControl.setDelays(U.HeaterDelay_on_ms, U.HeaterDelay_off_ms);  // ← UŻYJ setDelays()
+  heaterControl.enableSystem(U.HeaterEnabled);
+  
+  Serial.printf("⚙️ HeaterControl: U_on=%.1fV, U_off=%.1fV, delay_on=%dms, delay_off=%dms\n",
+                U.Ugrid_on, U.Ugrid_off, U.HeaterDelay_on_ms, U.HeaterDelay_off_ms);
+  
   while (true) {
-    WDT_RESET();  // 🔥 KOPNIJ WATCHDOGA
+    WDT_RESET();
     unsigned long currentTime = millis();
         
     if (currentTime - lastModbusRead >= modbusCfg.readInterval) {
       lastModbusRead = currentTime;
-      //updateCount++;      
+      updateCount++;      
       
-      // Pobierz napięcia z globalnej struktury modbusData
       float v1 = modbusData.gridVoltage1;
       float v2 = modbusData.gridVoltage2;
       float v3 = modbusData.gridVoltage3;
       
-      // Pobierz temperaturę z globalnej struktury Z
       float temp = Z.T_current;
       heaterControl.setBojlerTemperature(temp);
       
-      // Ustaw status Modbus
       heaterControl.setModbusStatus(modbusData.connected);
       
-      // Steruj grzałkami (UWAGA: update nie przyjmuje parametrów!)
       heaterControl.update();
-
-      //if (updateCount % 10 == 0) {
-        //Serial.printf("📊 Heater update #%d: L1=%.1fV, L2=%.1fV, L3=%.1fV, T=%.1f°C\n", 
-        //          updateCount, v1, v2, v3, temp);
-        //LOG_INFO("HeaterControl", "sprawdzamy warunki grzania");
-      //}
     }
     
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
-
+    
 // ========== ZADANIE 6: SYNCHRONIZACJA NTP ==========
 void taskNTPSync(void* parameter) {
   // Czekaj na połączenie WiFi (z watchdogiem)
@@ -244,6 +238,7 @@ void taskNTPSync(void* parameter) {
 }
 
 // ========== ZADANIE 7: MONITOR STATYSTYK ==========
+
 void taskStatisticsMonitor(void* parameter) {
   // Odczekaj chwilę na synchronizację NTP (max 30 sekund)
   int waitCount = 0;
@@ -340,7 +335,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
   TaskParams* params = new TaskParams;
   params->wifi = wifi;
   params->config = config;
-  loadStatistics();
+  //loadStatistics();
   //loadTemperatureHistory();
   
   // Core 1: WiFi monitor (przekaż parametry)
@@ -356,12 +351,11 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
   esp_task_wdt_add(taskWiFiHandle);  // DODAJ DO WATCHDOG
   //Serial.println("  - WiFi Monitor dodany do watchdoga");
   
-
   // Core 0: Odczyty temperatury
   xTaskCreatePinnedToCore(
     taskTemperature,
     "Temperature Task",
-    4096,
+    8192,
     NULL,
     1,
     &taskTemperatureHandle,
@@ -369,6 +363,8 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
   );
   esp_task_wdt_add(taskTemperatureHandle);  // DODAJ DO WATCHDOG
   //Serial.println("  - Temperature Task dodany do watchdoga");
+  
+
 
   // Core 0: synchronizacja NTP 
   xTaskCreatePinnedToCore(
@@ -393,11 +389,12 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     0
   );
   
+  
   // Zadanie logowania temperatury co 2 minuty (Core 1)
   xTaskCreatePinnedToCore(
     taskTemperatureLogger,
     "Temp Logger",
-    4096,
+    8192,
     NULL,
     1,
     NULL,
@@ -427,7 +424,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     1
   );
   esp_task_wdt_add(taskAlarmHandle);  // DODAJ DO WATCHDOG
-
+  
   // Core 1: Sterowanie grzałkami (DODANE)
   xTaskCreatePinnedToCore(
     taskHeaterControl,

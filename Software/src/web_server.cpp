@@ -208,11 +208,11 @@ void WebServerManager::handleApiSaveHeater() {
   
   // Aktualizacja struktury U
   U.HeaterEnabled = doc["enabled"] | true;  // Domyślnie włączone
-  U.Ugrid_on = doc["u_on"] | 252.0;
-  U.Ugrid_off = doc["u_off"] | 250.0;
+  U.Ugrid_on = doc["u_on"] | 253.0;
+  U.Ugrid_off = doc["u_off"] | 252.0;
   U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
-  U.bojlerTmax = doc["t_max"] | 85;
+  U.bojlerTmax = doc["t_max"] | 75;
   U.radiatorT_critical = doc["radiatorT_critical"] | false;
   U.radiatorTmax = doc["radiatorTmax"] | 60;
   
@@ -295,7 +295,7 @@ void WebServerManager::handleApiStatus() {
 
   doc["contactor"] = stycznik.state;
   
-  doc["temp_bojler"] = Z.T_current;
+  doc["temp_bojler"] = T.bojler.temperatura;
   doc["temp_max"] = U.bojlerTmax;
   
   // ========== DODANE: WERSJA OPROGRAMOWANIA ==========

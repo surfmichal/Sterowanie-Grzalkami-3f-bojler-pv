@@ -63,10 +63,10 @@ struct Zmienne {
   bool heater1_flag;     // stan pracy grzalki 1
   bool heater2_flag;     // stan pracy grzalki 2
   bool heater3_flag;     // stan pracy grzalki 3
-  bool Tmax_ovf;         // stan osiagniecia temperatury max
-  bool modbus_state_ok;  // stan polaczenia modbus
-  float T_current;       // Aktualna temperatura bojlera(°C)
-  bool T_sensor_ok;      // Czy czujnik działa  
+  bool Tmax_flag;         // stan osiagniecia temperatury max
+  //bool modbus_state_ok;  // stan polaczenia modbus
+  //float T_current;       // Aktualna temperatura bojlera(°C)
+  //bool T_sensor_ok;      // Czy czujnik działa  
 };
 
 struct Ustawienia {

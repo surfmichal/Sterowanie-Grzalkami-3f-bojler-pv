@@ -301,26 +301,6 @@
                     if (fwVersionSpan) fwVersionSpan.innerHTML = data.firmware_version || '---';
                     if (compileSpan) compileSpan.innerHTML = data.compile_datetime || '---';
                     
-                    // Temperatura bojlera
-                    const temp = data.temp_bojler || 0;
-                    const tempMax = data.temp_max || 85;
-                    document.getElementById('tempBojler').innerHTML = temp.toFixed(1);
-                    document.getElementById('tempMax').innerHTML = tempMax;
-                    
-                    // Pasek temperatury
-                    const percent = Math.min(100, (temp / tempMax) * 100);
-                    const bar = document.getElementById('tempBar');
-                    if (bar) {
-                        bar.style.width = percent + '%';
-                        if (percent > 90) {
-                            bar.style.background = '#f44336';
-                        } else if (percent > 75) {
-                            bar.style.background = '#ff9800';
-                        } else {
-                            bar.style.background = '#4CAF50';
-                        }
-                    }
-                    
                     // Grzałki
                     const g1 = document.getElementById('grzalka1');
                     const g2 = document.getElementById('grzalka2');

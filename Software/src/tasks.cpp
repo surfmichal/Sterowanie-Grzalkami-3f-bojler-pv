@@ -143,12 +143,11 @@ void taskTemperature(void* parameter) {
       sensorBojler.requestTemperatures();
       float temp = sensorBojler.readTemperature(0);
       if (temp != DEVICE_DISCONNECTED_C) {
-        T.bojler.temperatura = temp;
-        T.temperatura_bojlera = (int8_t)temp;
+        T.bojler.temperatura = temp;        
         T.bojler.ok = true;
       } else {
         T.bojler.ok = false;
-      }
+      }      
     }
     
     // === CZUJNIK RADIATORA ===
@@ -165,6 +164,10 @@ void taskTemperature(void* parameter) {
       // Brak czujnika – ustaw domyślną temperaturę (bezpieczną)
       T.radiator.ok = false;      
     }
+    Serial.printf("📡 Odczyt temperatury: bojler=%.2f°C, radiator=%.2f°C\n", 
+                    T.bojler.temperatura, T.radiator.temperatura);
+    LOG_INFO("Temperature", "Odczyt temperatury: bojler=%.2f°C, radiator=%.2f°C", 
+                    T.bojler.temperatura, T.radiator.temperatura);
     
     vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
@@ -195,8 +198,7 @@ void taskHeaterControl(void* parameter) {
       float v2 = modbusData.gridVoltage2;
       float v3 = modbusData.gridVoltage3;
       
-      float temp = Z.T_current;
-      heaterControl.setBojlerTemperature(temp);
+      float temp = T.bojler.temperatura;
       
       heaterControl.setModbusStatus(modbusData.connected);
       
@@ -308,7 +310,7 @@ void taskTemperatureLogger(void* parameter) {
       lastLogTime = now;
       
       // Pobierz aktualną temperaturę (z zadania temperature)
-      int8_t temp = Z.T_current;  // lub T.bojler.temperatura
+      int8_t temp = (int8_t)T.bojler.temperatura;
       
       // Dodaj do bufora FIFO
       addTemperatureReading(temp);

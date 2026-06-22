@@ -64,7 +64,7 @@
                 </div>
                 <div class='row'>
                     <div class='form-group'>
-                        <label>Opóźnienie wyłączenia (ms)</label>
+                        <label>Opóźnienie załączenia (ms)</label>
                         <input type='number' id='heater_delay_on' step='1000' placeholder='1000'>
                     </div>
                     <div class='form-group'>
@@ -75,16 +75,16 @@
                 <div class='row'>
                     <div class='form-group'>
                         <label>Maksymalna temp. bojlera (°C)</label>
-                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>
+                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>  <!-- ← zmiana na małe t -->
                     </div>
                     <div class='form-group'>
                         <label>Maksymalna temp. radiatora (°C)</label>
-                        <input type='number' id='radiator_Tmax' step='1' placeholder='85'>
+                        <input type='number' id='radiator_Tmax' step='1' placeholder='85'>  <!-- ← zmiana na małe t -->
                     </div>
                 </div>               
                 <div class='form-group'>
                     <label class='checkbox-group'>
-                        <input type='checkbox' id='radiator_critical' checked> 
+                        <input type='checkbox' id='radiatorT_critical' checked> 
                         Blokada załączania grzałek od czujnika temperatury radiatora 
                     </label>
                     <div style='font-size: 12px; color: #666; margin-top: 5px;'>
@@ -235,15 +235,19 @@
             fetch('/api/heater_config')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Heater config:', data);  // ← debug
+                    
+                    // ✅ POPRAWIONE ID (zgodne z HTML)
                     document.getElementById('heater_u_on').value = data.u_on ?? 252;
                     document.getElementById('heater_u_off').value = data.u_off ?? 250;
                     document.getElementById('heater_delay_on').value = data.delay_on_ms ?? 1000;
                     document.getElementById('heater_delay_off').value = data.delay_off_ms ?? 5000;
-                    document.getElementById('bojler_Tmax').value = data.bojler_Tmax ?? 85;
+                    document.getElementById('bojler_Tmax').value = data.bojler_Tmax ?? 85;        // ← duże T
                     document.getElementById('heater_enabled').checked = data.Heater_enabled !== false;
                     document.getElementById('radiatorT_critical').checked = data.radiatorT_critical !== false;
-                    document.getElementById('radiator_Tmax').value = data.radiator_Tmax ?? 60;
+                    document.getElementById('radiator_Tmax').value = data.radiator_Tmax ?? 60;     // ← duże T
                 });
+            
             // Konfiguracja logów
             loadLogsConfig();
         }
@@ -316,16 +320,21 @@
         }
         
         function saveHeater() {
+            console.log('🔥 saveHeater() wywołane!');
+            
+            // ✅ POPRAWIONE ID (zgodne z HTML)
             const data = {
+                enabled: document.getElementById('heater_enabled').checked,
                 u_on: parseFloat(document.getElementById('heater_u_on').value),
                 u_off: parseFloat(document.getElementById('heater_u_off').value),
                 delay_on_ms: parseInt(document.getElementById('heater_delay_on').value),
                 delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
-                Heater_enabled: document.getElementById('heater_enabled').checked,
-                bojler_Tmax: parseFloat(document.getElementById('bojler_Tmax').value),
+                t_max: parseFloat(document.getElementById('bojler_Tmax').value),           // ← duże T
                 radiatorT_critical: document.getElementById('radiatorT_critical').checked,
-                radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value)
+                radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value)  // ← duże T
             };
+            
+            console.log('📤 Wysyłam dane:', data);
             
             fetch('/api/save_heater', {
                 method: 'POST',
@@ -334,15 +343,22 @@
             })
             .then(response => response.json())
             .then(result => {
+                console.log('📥 Odpowiedź:', result);
                 if (result.success) {
                     showSuccess('Ustawienia grzałek zapisane!');
+                    // Odśwież status
+                    loadHeaterStatus();
                 } else {
-                    showError('Błąd zapisu grzałek');
+                    showError('Błąd zapisu: ' + (result.error || 'nieznany'));
                 }
+            })
+            .catch(err => {
+                console.error('❌ Błąd fetch:', err);
+                showError('Błąd komunikacji z ESP32');
             });
         }
-         
-                function saveLogsConfig() {
+        
+        function saveLogsConfig() {
             const data = {
                 storage_mode: document.getElementById('log_storage_mode').value,
                 log_level: parseInt(document.getElementById('log_level').value)

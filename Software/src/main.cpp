@@ -35,7 +35,7 @@ void setup() {
   
   // ===== INICJALIZACJA PINÓW (z globals.h) =====
   pinMode(LED_BUILTIN_pin, OUTPUT);
-  pinMode(LED_AL1_pin, OUTPUT);
+  
   pinMode(LED_GRZALKA1_pin, OUTPUT);
   pinMode(LED_GRZALKA2_pin, OUTPUT);
   pinMode(LED_GRZALKA3_pin, OUTPUT);
@@ -46,7 +46,6 @@ void setup() {
   
   // Ustawienia początkowe
   digitalWrite(LED_BUILTIN_pin, LOW);
-  digitalWrite(LED_AL1_pin, LOW);
   GRZALKA1_grzanie(OFF);
   GRZALKA2_grzanie(OFF);
   GRZALKA3_grzanie(OFF);

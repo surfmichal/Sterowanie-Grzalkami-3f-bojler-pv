@@ -58,8 +58,38 @@ bool HeaterControl::isModbusDataValid() {
 }
 
 bool HeaterControl::isTemperatureSafe() {
-  if (!Z.T_sensor_ok) return false;
-  if (Z.T_current >= U.bojlerTmax) return false;
+  // === BOJLER ===
+  if (!T.bojler.ok) {
+    LOG_ERROR_DEDUP("HeaterControl", "Czujnik bojlera nie działa - BLOKADA grzałek!");
+    return false;
+  }
+  
+  if (T.bojler.temperatura >= U.bojlerTmax) {
+    LOG_ERROR_DEDUP("HeaterControl", "Temperatura bojlera %.1f°C >= %.1f°C - BLOKADA!", 
+                    T.bojler.temperatura, U.bojlerTmax);
+    return false;
+  }
+  
+  // === RADIATOR ===
+  if (T.radiator.ok) {
+    if (T.radiator.temperatura >= U.radiatorTmax) {
+      LOG_ERROR_DEDUP("HeaterControl", "Temperatura radiatora %.1f°C >= %.1f°C - BLOKADA!", 
+                      T.radiator.temperatura, U.radiatorTmax);
+      return false;
+    }
+    
+    if (T.radiator.temperatura >= U.radiatorTmax - 5.0) {
+      LOG_WARN_DEDUP("HeaterControl", "Ostrzeżenie: radiator %.1f°C (blisko limitu %.1f°C)", 
+                     T.radiator.temperatura, U.radiatorTmax);
+    }
+  } else {
+    if (U.radiatorT_critical) {
+      LOG_ERROR_DEDUP("HeaterControl", "Czujnik radiatora nie działa i jest KRYTYCZNY - BLOKADA!");
+      return false;
+    } else {
+      LOG_WARN_DEDUP("HeaterControl", "Czujnik radiatora nie działa (NIEKRYTYCZNY)");
+    }
+  }
   return true;
 }
 
@@ -126,16 +156,14 @@ void HeaterControl::turnOnNow(int index) {
     }
     
     if (pin != -1) {
-      digitalWrite(pin, GRZALKA_ON);   // LOW = załączone
-      digitalWrite(ledPin, HIGH);      // LED może być normalnej logiki
+      digitalWrite(pin, GRZALKA_ON);
+      digitalWrite(ledPin, LED_ON);      
       
-      // 🔥 aktualizacja flagi dla strony WWW:
-      updateHeaterFlag(index, true);
+      LOG_INFO_DEDUP("HeaterControl", "[%s] 🔥 GRZAŁKA ZAŁĄCZONA (napięcie: %.1fV, T: %.1f°C)", 
+                     phaseName, voltage, T.bojler.temperatura);
       
-      Serial.printf("[%s] 🔥 GRZAŁKA ZAŁĄCZONA (napięcie: %.1fV, T: %.1f°C)\n", 
-                    phaseName, voltage, Z.T_current);
-      LOG_INFO("HeaterControl", "[%s] GRZAŁKA ZAŁĄCZONA (napięcie: %.1fV, T: %.1f°C)", 
-               phaseName, voltage, Z.T_current);
+      // Zliczanie załączeń
+      incrementHeaterCycles(index + 1);
     }
   }
 }

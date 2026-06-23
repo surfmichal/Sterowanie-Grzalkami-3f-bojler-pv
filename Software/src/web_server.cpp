@@ -41,6 +41,7 @@ void WebServerManager::begin() {
   server.on("/api/logs/download", HTTP_GET, std::bind(&WebServerManager::handleApiLogsDownload, this));
   server.on("/api/logs/clear", HTTP_POST, std::bind(&WebServerManager::handleApiLogsClear, this));
   server.on("/api/time", HTTP_GET, std::bind(&WebServerManager::handleApiTime, this));
+  server.on("/api/temperatures", HTTP_GET, std::bind(&WebServerManager::handleApiTemperatures, this));
   server.on("/api/statistics", HTTP_GET, std::bind(&WebServerManager::handleApiStatistics, this));  
   server.on("/api/temperature/history", HTTP_GET, std::bind(&WebServerManager::handleApiTemperatureHistory, this));
   server.on("/api/temperature/last", HTTP_GET, std::bind(&WebServerManager::handleApiTemperatureLast, this));
@@ -145,14 +146,44 @@ void WebServerManager::handle() {
   server.handleClient();
 }
 
+// ========== API: WSZYSTKIE TEMPERATURY ==========
+void WebServerManager::handleApiTemperatures() {
+  DynamicJsonDocument doc(256);
+  
+  // === BOJLER ===
+  if (T.bojler.ok) {
+    doc["bojler"]["temp"] = T.bojler.temperatura;
+    doc["bojler"]["ok"] = true;
+  } else {
+    doc["bojler"]["ok"] = false;
+    doc["bojler"]["temp"] = nullptr;  // ← null w JSON
+  }
+  
+  // === RADIATOR ===
+  if (T.radiator.ok) {
+    doc["radiator"]["temp"] = T.radiator.temperatura;
+    doc["radiator"]["ok"] = true;
+  } else {
+    doc["radiator"]["ok"] = false;
+    doc["radiator"]["temp"] = nullptr;  // ← null w JSON
+  }
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
 // ========== API: KONFIGURACJA GRZAŁEK (GET) ==========
 void WebServerManager::handleApiHeaterConfig() {
   DynamicJsonDocument doc(256);
   doc["u_on"] = U.Ugrid_on;
   doc["u_off"] = U.Ugrid_off;
+  doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
-  doc["enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
-  doc["t_max"] = U.bojlerTmax;
+  doc["Heater_enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
+  doc["bojler_Tmax"] = U.bojlerTmax;
+  doc["radiatorT_critical"] = U.radiatorT_critical;
+  doc["radiator_Tmax"] = U.radiatorTmax;
   
   String response;
   serializeJson(doc, response);
@@ -176,10 +207,15 @@ void WebServerManager::handleApiSaveHeater() {
   }
   
   // Aktualizacja struktury U
-  U.Ugrid_on = doc["u_on"] | 252.0;
-  U.Ugrid_off = doc["u_off"] | 250.0;
-  U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;
-  U.bojlerTmax = doc["t_max"] | 85;
+  U.HeaterEnabled = doc["enabled"] | true;  // Domyślnie włączone
+  U.Ugrid_on = doc["u_on"] | 253.0;
+  U.Ugrid_off = doc["u_off"] | 252.0;
+  U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
+  U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
+  U.bojlerTmax = doc["t_max"] | 75;
+  U.radiatorT_critical = doc["radiatorT_critical"] | false;
+  U.radiatorTmax = doc["radiatorTmax"] | 60;
+  
   
   // Zapisz do pliku konfiguracyjnego
   config->saveUstawienia();
@@ -259,7 +295,7 @@ void WebServerManager::handleApiStatus() {
 
   doc["contactor"] = stycznik.state;
   
-  doc["temp_bojler"] = Z.T_current;
+  doc["temp_bojler"] = T.bojler.temperatura;
   doc["temp_max"] = U.bojlerTmax;
   
   // ========== DODANE: WERSJA OPROGRAMOWANIA ==========

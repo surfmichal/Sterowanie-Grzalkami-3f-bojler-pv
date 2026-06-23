@@ -39,21 +39,14 @@
         </div>
         <h1>🔧 Sterownik Grzałek + Falownik Sofar</h1>
         
-        <div class='grid'>
-            <!-- KARTA: FALOWNIK SOFAR -->
+        <div class='grid'>      
+            
+            <!-- KARTA: NAPIĘCIA SIECI -->
             <div class='card'>
                 <h3>☀️ Falownik Sofar 
                     <span id='modbusStatus' class='status'></span>
                     <span id='modbusStatusText' style='font-size: 12px;'></span>
                 </h3>
-                <div id='modbusData'>
-                    <p>Ładowanie danych...</p>
-                </div>
-            </div>
-            
-            <!-- KARTA: NAPIĘCIA SIECI -->
-            <div class='card'>
-                <h3>⚡ Napięcia sieciowe</h3>
                 <table>
                     <tr><td>Faza L1:</td><td><span id='v1'>---</span> <span class='unit'>V</span></td></tr>
                     <tr><td>Faza L2:</td><td><span id='v2'>---</span> <span class='unit'>V</span></td></tr>
@@ -69,6 +62,17 @@
                     <tr><td>Faza L2:</td><td><span id='a2'>---</span> <span class='unit'>A</span></td></tr>
                     <tr><td>Faza L3:</td><td><span id='a3'>---</span> <span class='unit'>A</span></td></tr>
                     <tr style='border-top:2px solid #ddd;'><td><strong>Moc całkowita:</strong></td><td><strong><span id='totalPower'>---</span> <span class='unit'>W</span></strong></td></tr>
+                </table>
+            </div>
+
+            <!-- KARTA: PRODUKCJA -->
+            <div class='card'>
+                <h3>📊 Produkcja</h3>
+                <table>
+                    <tr><td>Dzisiaj:</td><td><span id='dailyEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Całkowita:</td><td><span id='totalEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Temperatura falownika:</td><td><span id='tempInner'>---</span> <span class='unit'>°C</span></td></tr>
+                    <tr><td>Temperatura modułów:</td><td><span id='tempModule'>---</span> <span class='unit'>°C</span></td></tr>
                 </table>
             </div>
             
@@ -87,32 +91,12 @@
                     <tr style='border-top:2px solid #ddd;'><td><strong>Moc PV całkowita:</strong></td><td><strong><span id='totalPV'>---</span> <span class='unit'>W</span></strong></td></tr>
                 </table>
             </div>
-            
-            <!-- KARTA: PRODUKCJA -->
-            <div class='card'>
-                <h3>📊 Produkcja</h3>
-                <table>
-                    <tr><td>Dzisiaj:</td><td><span id='dailyEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
-                    <tr><td>Całkowita:</td><td><span id='totalEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
-                    <tr><td>Temperatura falownika:</td><td><span id='tempInner'>---</span> <span class='unit'>°C</span></td></tr>
-                    <tr><td>Temperatura modułów:</td><td><span id='tempModule'>---</span> <span class='unit'>°C</span></td></tr>
-                </table>
-            </div>
-            
+                        
             <!-- KARTA: STEROWANIE GRZAŁKAMI i Temperatura bojlera -->
             <div class='card'>
                 <h3>🔥 Sterowanie grzałkami
                     <span id='systemStatusText' style='font-size: 14px; font-weight: normal;'></span>
-                </h3>
-                <div style='background: #e8f5e9; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;'>
-                    <span style='font-size: 18px;'>🌡️ Temperatura bojlera: </span>
-                    <span id='tempBojler' style='font-size: 24px; font-weight: bold;'>---</span>
-                    <span class='unit'>°C</span>
-                    <span style='margin-left: 15px;'>| Max: <span id='tempMax'>---</span> <span class='unit'>°C</span></span>
-                    <div style='background: #e0e0e0; border-radius: 10px; height: 8px; margin-top: 8px;'>
-                        <div id='tempBar' style='background: #4CAF50; border-radius: 10px; height: 8px; width: 0%;'></div>
-                    </div>
-                </div>
+                </h3>                
                 <div style='margin-bottom: 10px; padding: 8px; background: #fff3e0; border-radius: 5px; text-align: center;'>
                     <span>🔌 Stycznik główny: </span>
                     <strong id='contactorState'>---</strong>
@@ -129,6 +113,47 @@
                     <button id='grzalka3' class='off' style='flex:1;'>Grzałka 3 OFF</button>
                 </div>
                 <div id='heaterStatus' style='margin-top: 10px; font-size: 12px; text-align: center; color: #666;'></div>
+            </div>
+
+            <!-- KARTA: TEMPERATURY -->
+            <div class='card'>
+                <h3>🌡️ Temperatury</h3>
+                
+                <!-- BOJLER -->
+                <div style='margin-bottom: 15px;'>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <div>
+                            <strong>Bojler</strong>
+                            <span id='bojlerStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
+                        </div>
+                        <div>
+                            <span id='tempBojlerDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
+                            <span class='unit'>°C</span>
+                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempBojlerMax'>--</span>°C</span>
+                        </div>
+                    </div>
+                    <div style='background: #e0e0e0; border-radius: 10px; height: 10px; margin-top: 5px;'>
+                        <div id='bojlerBar' style='background: #4CAF50; border-radius: 10px; height: 10px; width: 0%; transition: width 0.5s;'></div>
+                    </div>
+                </div>
+                
+                <!-- RADIATOR -->
+                <div>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <div>
+                            <strong>Radiator</strong>
+                            <span id='radiatorStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
+                        </div>
+                        <div>
+                            <span id='tempRadiatorDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
+                            <span class='unit'>°C</span>
+                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempRadiatorMax'>--</span>°C</span>
+                        </div>
+                    </div>
+                    <div style='background: #e0e0e0; border-radius: 10px; height: 10px; margin-top: 5px;'>
+                        <div id='radiatorBar' style='background: #ff9800; border-radius: 10px; height: 10px; width: 0%; transition: width 0.5s;'></div>
+                    </div>
+                </div>
             </div>
 
             <!-- KARTA: STATUS SYSTEMU -->
@@ -276,26 +301,6 @@
                     if (fwVersionSpan) fwVersionSpan.innerHTML = data.firmware_version || '---';
                     if (compileSpan) compileSpan.innerHTML = data.compile_datetime || '---';
                     
-                    // Temperatura bojlera
-                    const temp = data.temp_bojler || 0;
-                    const tempMax = data.temp_max || 85;
-                    document.getElementById('tempBojler').innerHTML = temp.toFixed(1);
-                    document.getElementById('tempMax').innerHTML = tempMax;
-                    
-                    // Pasek temperatury
-                    const percent = Math.min(100, (temp / tempMax) * 100);
-                    const bar = document.getElementById('tempBar');
-                    if (bar) {
-                        bar.style.width = percent + '%';
-                        if (percent > 90) {
-                            bar.style.background = '#f44336';
-                        } else if (percent > 75) {
-                            bar.style.background = '#ff9800';
-                        } else {
-                            bar.style.background = '#4CAF50';
-                        }
-                    }
-                    
                     // Grzałki
                     const g1 = document.getElementById('grzalka1');
                     const g2 = document.getElementById('grzalka2');
@@ -346,7 +351,99 @@
                 .catch(err => console.error('Błąd toggle grzałki:', err));
         }
 
+        function updateTemperatures() {
+            fetch('/api/temperatures')
+                .then(response => response.json())
+                .then(data => {
+                    // === BOJLER ===
+                    const boilerOk = data.bojler?.ok || false;
+                    const boilerTemp = data.bojler?.temp;
+                    const boilerMax = 80.0; // Pobierane z config
+                    
+                    const boilerDisplay = document.getElementById('tempBojlerDisplay');
+                    const boilerStatus = document.getElementById('bojlerStatus');
+                    const boilerBar = document.getElementById('bojlerBar');
+                    const boilerMaxSpan = document.getElementById('tempBojlerMax');
+                    
+                    boilerMaxSpan.innerHTML = boilerMax.toFixed(1);
+                    
+                    if (boilerOk && boilerTemp !== null && boilerTemp !== undefined) {
+                        boilerDisplay.innerHTML = boilerTemp.toFixed(1);
+                        boilerStatus.innerHTML = '✅ OK';
+                        boilerStatus.style.color = '#4CAF50';
+                        
+                        // Pasek
+                        const percent = Math.min(100, (boilerTemp / boilerMax) * 100);
+                        boilerBar.style.width = percent + '%';
+                        
+                        if (percent > 90) {
+                            boilerBar.style.background = '#f44336';
+                            boilerStatus.innerHTML = '🔴 ZA GORĄCO!';
+                            boilerStatus.style.color = '#f44336';
+                        } else if (percent > 75) {
+                            boilerBar.style.background = '#ff9800';
+                            boilerStatus.innerHTML = '🟠 OSTRZEŻENIE';
+                            boilerStatus.style.color = '#ff9800';
+                        } else {
+                            boilerBar.style.background = '#4CAF50';
+                        }
+                    } else {
+                        boilerDisplay.innerHTML = '--';
+                        boilerStatus.innerHTML = '⚠️ BRAK CZUJNIKA';
+                        boilerStatus.style.color = '#ff9800';
+                        boilerBar.style.width = '0%';
+                    }
+                    
+                    // === RADIATOR ===
+                    const radOk = data.radiator?.ok || false;
+                    const radTemp = data.radiator?.temp;
+                    const radMax = 60.0; // Pobierane z config
+                    
+                    const radDisplay = document.getElementById('tempRadiatorDisplay');
+                    const radStatus = document.getElementById('radiatorStatus');
+                    const radBar = document.getElementById('radiatorBar');
+                    const radMaxSpan = document.getElementById('tempRadiatorMax');
+                    
+                    radMaxSpan.innerHTML = radMax.toFixed(1);
+                    
+                    if (radOk && radTemp !== null && radTemp !== undefined) {
+                        radDisplay.innerHTML = radTemp.toFixed(1);
+                        radStatus.innerHTML = '✅ OK';
+                        radStatus.style.color = '#4CAF50';
+                        
+                        // Pasek
+                        const percent = Math.min(100, (radTemp / radMax) * 100);
+                        radBar.style.width = percent + '%';
+                        
+                        if (percent > 90) {
+                            radBar.style.background = '#f44336';
+                            radStatus.innerHTML = '🔴 ZA GORĄCO!';
+                            radStatus.style.color = '#f44336';
+                        } else if (percent > 75) {
+                            radBar.style.background = '#ff9800';
+                            radStatus.innerHTML = '🟠 OSTRZEŻENIE';
+                            radStatus.style.color = '#ff9800';
+                        } else {
+                            radBar.style.background = '#ff9800'; // Domyślnie pomarańczowy dla radiatora
+                        }
+                    } else {
+                        radDisplay.innerHTML = '--';
+                        radStatus.innerHTML = '⚠️ BRAK CZUJNIKA';
+                        radStatus.style.color = '#ff9800';
+                        radBar.style.width = '0%';
+                    }
+                })
+                .catch(err => {
+                    console.error('Błąd odczytu temperatur:', err);
+                    // W razie błędu pokaż -- dla obu
+                    document.getElementById('tempBojlerDisplay').innerHTML = '--';
+                    document.getElementById('tempRadiatorDisplay').innerHTML = '--';
+                    document.getElementById('bojlerBar').style.width = '0%';
+                    document.getElementById('radiatorBar').style.width = '0%';
+                });
+        }
 
+        
         function fetchNTPTime() {
             fetch('/api/time')
                 .then(response => response.json())
@@ -496,9 +593,11 @@
             });
         }
 
-    // Załaduj przy starcie
-    loadSimulation();
-    loadHeaterStatus();
+        // Załaduj przy starcie
+        loadSimulation();
+        loadHeaterStatus();
+        updateTemperatures();
+        setInterval(updateTemperatures, 5000);
     </script>
 </body>
 </html>

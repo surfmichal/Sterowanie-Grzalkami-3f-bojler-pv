@@ -1,6 +1,8 @@
 #include "config_manager.h"
 #include "globals.h"  
 #include <ArduinoJson.h>
+#include "logger.h"
+
 const char* ConfigManager::mainConfigPath = "/config.json";
 const char* ConfigManager::wlanConfigPath = "/wlan.json";
 
@@ -115,23 +117,35 @@ bool ConfigManager::loadMainConfig() {
 JsonObject Ustawienia = doc["Ustawienia"];
 if (Ustawienia) {
   // Sekcja istnieje - odczytaj wartości
+  U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
   U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
   U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
+  U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
   U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
+  U.radiatorTmax = Ustawienia["radiatorTmax"] | 60.0;
+  U.radiatorT_critical = Ustawienia["radiatorT_critical"] | true;
   
   Serial.println("✅ Odczytano ustawienia z sekcji 'Ustawienia':");
+  Serial.printf("   HeaterEnabled: %s\n", U.HeaterEnabled ? "true" : "false");
   Serial.printf("   Ugrid_on: %.1f V\n", U.Ugrid_on);
   Serial.printf("   Ugrid_off: %.1f V\n", U.Ugrid_off);
+  Serial.printf("   HeaterDelay_on_ms: %d ms\n", U.HeaterDelay_on_ms);
   Serial.printf("   HeaterDelay_off_ms: %d ms\n", U.HeaterDelay_off_ms);
   Serial.printf("   bojlerTmax: %.1f °C\n", U.bojlerTmax);
+  Serial.printf("   radiatorTmax: %.1f °C\n", U.radiatorTmax);
+  Serial.printf("   radiatorT_critical: %s\n", U.radiatorT_critical ? "true" : "false");
 } else {
   // Sekcja nie istnieje - użyj domyślnych
   Serial.println("⚠️ Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
-  U.Ugrid_on = 252.0;
+  U.HeaterEnabled = true;
+  U.Ugrid_on = 253.0;
   U.Ugrid_off = 250.0;
+  U.HeaterDelay_on_ms = 1000;
   U.HeaterDelay_off_ms = 5000;
   U.bojlerTmax = 80.0;
+  U.radiatorT_critical = true;
+  U.radiatorTmax = 60.0;
 }
 
   
@@ -295,6 +309,7 @@ bool ConfigManager::saveHeaterConfig() {
 // ========== ZAPIS STRUKTURY USTAWIENIA ==========
 bool ConfigManager::saveUstawienia() {
   Serial.println("saveUstawienia: Zapisuję ustawienia...");
+  LOG_INFO("USTAWIENIA","Zapisuję ustawienia do config.json");
   
   File file = LittleFS.open(mainConfigPath, "r");
   DynamicJsonDocument doc(2048);
@@ -306,16 +321,21 @@ bool ConfigManager::saveUstawienia() {
   }
   
   // Zapisz do sekcji "Ustawienia"
+  doc["Ustawienia"]["HeaterEnabled"] = U.HeaterEnabled;
   doc["Ustawienia"]["Ugrid_on"] = U.Ugrid_on;
   doc["Ustawienia"]["Ugrid_off"] = U.Ugrid_off;
+  doc["Ustawienia"]["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
   doc["Ustawienia"]["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
   doc["Ustawienia"]["bojlerTmax"] = U.bojlerTmax;
+  doc["Ustawienia"]["radiatorTmax"] = U.radiatorTmax;
+  doc["Ustawienia"]["radiatorT_critical"] = U.radiatorT_critical;
   doc["Ustawienia"]["serwer_www_port"] = 80;
   
   file = LittleFS.open(mainConfigPath, "w");
   Serial.println("Otwieram plik config.json!");
   if (!file) {
     Serial.println("Błąd otwarcia config.json do zapisu!");
+    LOG_ERROR("USTAWIENIA","Błąd otwarcia config.json do zapisu!");
     return false;
   }
   
@@ -326,6 +346,7 @@ bool ConfigManager::saveUstawienia() {
   
   Serial.println("✅ Zapisano ustawienia:");
   Serial.println(output);
+  LOG_INFO("USTAWIENIA","Zapisano ustawienia");
   
   return true;
 }
@@ -336,6 +357,7 @@ bool ConfigManager::loadUstawienia() {
   File file = LittleFS.open(mainConfigPath, "r");
   if (!file) {
     Serial.println("Brak config.json - używam domyślnych");
+    LOG_INFO("URUCHAMIANIE","Brak config.json - używam domyślnych wartości");
     return false;
   }
   
@@ -347,17 +369,23 @@ bool ConfigManager::loadUstawienia() {
   
   if (error) {
     Serial.println("Błąd parsowania JSON");
+    LOG_ERROR("URUCHAMIANIE","Błąd parsowania JSON");
     return false;
   }
   
   JsonObject Ustawienia = doc["Ustawienia"];
   if (Ustawienia) {
+    U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
     U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
     U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
+    U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
     U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
     U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
-        
+    U.radiatorTmax = Ustawienia["radiatorTmax"] | 70.0;
+    U.radiatorT_critical = Ustawienia["radiatorT_critical"] | false;
+            
     Serial.println("✅ Wczytano ustawienia z config.json");
+    LOG_INFO("URUCHAMIANIE","Wczytano ustawienia z config.json");
     return true;
   }
 
@@ -369,5 +397,7 @@ bool ConfigManager::loadUstawienia() {
   }
   
   Serial.println("Brak sekcji 'Ustawienia' - używam domyślnych");
+  LOG_INFO("URUCHAMIANIE","Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
+  
   return false;
 }

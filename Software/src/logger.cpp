@@ -1,9 +1,6 @@
 #include "logger.h"
 #include "ntp_manager.h"
-
-#ifndef MAX_LOG_LINES
-#define MAX_LOG_LINES 200
-#endif
+#include <cstdarg>
 
 extern NTPManager ntp;
 
@@ -12,10 +9,16 @@ Logger::Logger() {
   bufferCount = 0;
   minLevel = LOG_INFO;
   storageMode = STORAGE_RAM_ONLY;
+  dedupInterval = LOG_DEDUP_INTERVAL;
   
-  // Inicjalizuj wszystkie wpisy bufora
   for (int i = 0; i < MAX_LOG_LINES; i++) {
     logBuffer[i] = "";
+  }
+  
+  for (int i = 0; i < MAX_DEDUP_HISTORY; i++) {
+    dedupHistory[i].active = false;
+    dedupHistory[i].message[0] = '\0';
+    dedupHistory[i].lastSend = 0;
   }
 }
 
@@ -23,18 +26,15 @@ void Logger::begin(LogLevel level, LogStorageMode mode) {
   minLevel = level;
   storageMode = mode;
   
-  // Jeśli tryb FLASH, przygotuj system plików
   if (storageMode == STORAGE_FLASH) {
     if (!LittleFS.begin(true)) {
       Serial.println("Logger: Błąd montowania LittleFS - wyłączam zapis do flash");
       storageMode = STORAGE_RAM_ONLY;
     } else {
-      // Utwórz folder logów jeśli nie istnieje
       if (!LittleFS.exists("/logs")) {
         LittleFS.mkdir("/logs");
       }
       
-      // Załaduj ostatnie logi z pliku do bufora (opcjonalnie)
       File file = LittleFS.open(getLogFileName(0), "r");
       if (file) {
         while (file.available() && bufferCount < MAX_LOG_LINES) {
@@ -51,21 +51,17 @@ void Logger::begin(LogLevel level, LogStorageMode mode) {
   }
   
   log(LOG_INFO, "Logger", "Logger zainicjalizowany (tryb: %s)", 
-       storageMode == STORAGE_RAM_ONLY ? "RAM tylko" : "RAM+FLASH");
+      storageMode == STORAGE_RAM_ONLY ? "RAM tylko" : "RAM+FLASH");
 }
 
 String Logger::getTimestamp() {
   struct tm timeinfo;
-  
-  // Próba pobrania aktualnego czasu z RTC
-  // Uwaga: getLocalTime(..., 0) nie czeka - natychmiast zwraca true/false
   if (getLocalTime(&timeinfo, 0)) {
     char buffer[20];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
     return String(buffer);
   }
   
-  // Fallback: czas od uruchomienia
   unsigned long uptime = millis() / 1000;
   char buffer[30];
   snprintf(buffer, sizeof(buffer), "[UPTIME %lud %02lu:%02lu:%02lu]", 
@@ -76,7 +72,94 @@ String Logger::getTimestamp() {
   return String(buffer);
 }
 
-// ========== JEDYNA DEFINICJA LOG() ==========
+// ========== DEDUPLIKACJA ==========
+int Logger::findDedup(const char* message) {
+  for (int i = 0; i < MAX_DEDUP_HISTORY; i++) {
+    if (dedupHistory[i].active && strcmp(dedupHistory[i].message, message) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int Logger::getFreeDedupSlot() {
+  for (int i = 0; i < MAX_DEDUP_HISTORY; i++) {
+    if (!dedupHistory[i].active) {
+      return i;
+    }
+  }
+  unsigned long oldest = millis();
+  int oldestIndex = 0;
+  for (int i = 0; i < MAX_DEDUP_HISTORY; i++) {
+    if (dedupHistory[i].lastSend < oldest) {
+      oldest = dedupHistory[i].lastSend;
+      oldestIndex = i;
+    }
+  }
+  return oldestIndex;
+}
+
+void Logger::cleanupDedup() {
+  unsigned long now = millis();
+  for (int i = 0; i < MAX_DEDUP_HISTORY; i++) {
+    if (dedupHistory[i].active && (now - dedupHistory[i].lastSend > dedupInterval * 2)) {
+      dedupHistory[i].active = false;
+    }
+  }
+}
+
+bool Logger::shouldSendDedup(const char* message) {
+  cleanupDedup();
+  int index = findDedup(message);
+  unsigned long now = millis();
+  
+  if (index != -1) {
+    if (now - dedupHistory[index].lastSend < dedupInterval) {
+      return false;
+    }
+    dedupHistory[index].lastSend = now;
+    return true;
+  } else {
+    int slot = getFreeDedupSlot();
+    strncpy(dedupHistory[slot].message, message, sizeof(dedupHistory[slot].message) - 1);
+    dedupHistory[slot].message[sizeof(dedupHistory[slot].message) - 1] = '\0';
+    dedupHistory[slot].lastSend = now;
+    dedupHistory[slot].active = true;
+    return true;
+  }
+}
+
+// ========== LOG Z DEDUPLIKACJĄ (TYLKO JEDNA DEFINICJA!) ==========
+bool Logger::logDedup(LogLevel level, const char* tag, const char* format, ...) {
+  if (level < minLevel) return false;
+  
+  char message[256];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(message, sizeof(message), format, args);
+  va_end(args);
+  
+  if (!shouldSendDedup(message)) {
+    return false;
+  }
+  
+  const char* levelStr[] = {"DBG", "INF", "WRN", "ERR"};
+  String entry = getTimestamp() + " [" + String(levelStr[level]) + "] [" + String(tag) + "] " + String(message);
+  
+  logBuffer[bufferHead] = entry;
+  bufferHead = (bufferHead + 1) % MAX_LOG_LINES;
+  if (bufferCount < MAX_LOG_LINES) bufferCount++;
+  
+  Serial.println(entry);
+  
+  if (storageMode == STORAGE_FLASH) {
+    writeToFile(entry);
+  }
+  
+  return true;
+}
+
+// ========== GŁÓWNA METODA LOGOWANIA (bez deduplikacji) ==========
 void Logger::log(LogLevel level, const char* tag, const char* format, ...) {
   if (level < minLevel) return;
   
@@ -87,18 +170,14 @@ void Logger::log(LogLevel level, const char* tag, const char* format, ...) {
   va_end(args);
   
   const char* levelStr[] = {"DBG", "INF", "WRN", "ERR"};
-  
   String entry = getTimestamp() + " [" + String(levelStr[level]) + "] [" + String(tag) + "] " + String(message);
   
-  // Dodaj do bufora RAM
   logBuffer[bufferHead] = entry;
   bufferHead = (bufferHead + 1) % MAX_LOG_LINES;
   if (bufferCount < MAX_LOG_LINES) bufferCount++;
   
-  // Wypisz na serial
   Serial.println(entry);
   
-  // Zapisz do pliku TYLKO w trybie FLASH
   if (storageMode == STORAGE_FLASH) {
     writeToFile(entry);
   }
@@ -153,9 +232,8 @@ void Logger::writeToFile(const String& entry) {
   file.println(entry);
   file.close();
   
-  // Sprawdź rozmiar pliku
   file = LittleFS.open(getLogFileName(0), "r");
-  if (file && file.size() > 10240) {  // 10KB
+  if (file && file.size() > 10240) {
     file.close();
     rotateLogs();
   } else if (file) {
@@ -190,8 +268,6 @@ String Logger::getRecentLogs(int lines) {
   
   for (int i = 0; i < count; i++) {
     int idx = (bufferHead - count + i + MAX_LOG_LINES) % MAX_LOG_LINES;
-    
-    // Pomiń puste wpisy
     if (logBuffer[idx].length() > 0) {
       result += logBuffer[idx] + "\n";
     }
@@ -202,7 +278,6 @@ String Logger::getRecentLogs(int lines) {
 
 String Logger::getAllLogs() {
   if (storageMode == STORAGE_FLASH) {
-    // W trybie FLASH – zbierz wszystkie pliki
     String result;
     for (int i = 4; i >= 0; i--) {
       File file = LittleFS.open(getLogFileName(i), "r");
@@ -216,17 +291,14 @@ String Logger::getAllLogs() {
     result += getRecentLogs(MAX_LOG_LINES);
     return result;
   } else {
-    // W trybie RAM – tylko bufor
     return getRecentLogs(MAX_LOG_LINES);
   }
 }
 
 void Logger::clearLogs() {
-  // Wyczyść bufor RAM
   bufferHead = 0;
   bufferCount = 0;
   
-  // Jeśli tryb FLASH, usuń pliki
   if (storageMode == STORAGE_FLASH) {
     for (int i = 0; i < 5; i++) {
       String fileName = getLogFileName(i);
@@ -246,8 +318,16 @@ void Logger::setLogLevel(LogLevel level) {
 void Logger::setStorageMode(LogStorageMode mode) {
   storageMode = mode;
   log(LOG_INFO, "Logger", "Zmiana trybu przechowywania na: %s", 
-       storageMode == STORAGE_RAM_ONLY ? "RAM tylko" : "RAM+FLASH");
+      storageMode == STORAGE_RAM_ONLY ? "RAM tylko" : "RAM+FLASH");
 }
 
-// Definicja globalnego loggera
+void Logger::setDedupInterval(unsigned long intervalMs) {
+  dedupInterval = intervalMs;
+}
+
+int Logger::getLogCount() {
+  return bufferCount;
+}
+
+// ========== DEFINICJA GLOBALNEGO LOGGERA ==========
 Logger logger;

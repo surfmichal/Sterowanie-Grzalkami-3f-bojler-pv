@@ -2,7 +2,7 @@
 #include "globals.h"
 #include <Arduino.h>
 #include "wifi_manager.h"
-#include <OneWire.h>
+//#include <OneWire_manager.h>
 #include <DallasTemperature.h>
 #include "heater_control.h"
 #include "logger.h"
@@ -55,7 +55,8 @@ void taskLED(void* parameter) {
       digitalWrite(LED_GRZALKA3_pin, state);
     }
     
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100)); 
   }
 }
 
@@ -66,12 +67,15 @@ void taskAlarm(void* parameter) {
     if (alarmTriggered) {
       // Szybkie miganie przy alarmie
       //digitalWrite(LED_AL1_pin, HIGH);
-      vTaskDelay(100 / portTICK_PERIOD_MS);
+      //vTaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(pdMS_TO_TICKS(100)); 
       //digitalWrite(LED_AL1_pin, LOW);
-      vTaskDelay(100 / portTICK_PERIOD_MS);
+      //vTaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(pdMS_TO_TICKS(100)); 
     } else {
       //digitalWrite(LED_AL1_pin, LOW);
-      vTaskDelay(500 / portTICK_PERIOD_MS);
+      //vTaskDelay(500 / portTICK_PERIOD_MS);
+      vTaskDelay(pdMS_TO_TICKS(100)); 
     }
   }
 }
@@ -105,12 +109,14 @@ void taskWiFiMonitor(void* parameter) {
     }
     
     // Zadanie zasypia na 10 sekund. W tym czasie watchdog wie, że to zadanie "żyje"
-    vTaskDelay(10000 / portTICK_PERIOD_MS);  
+    //vTaskDelay(10000 / portTICK_PERIOD_MS);  
+    vTaskDelay(pdMS_TO_TICKS(10000)); 
   }
 }
 
 // ========== ZADANIE 4: ODCZYT TEMPERATUR Z WSZYSTKICH CZUJNIKÓW ==========
 void taskTemperature(void* parameter) {
+  // Inicjalizacja magistrali OneWire dla obu czujników
   sensorBojler.begin();
   sensorRadiator.begin();
   
@@ -122,6 +128,7 @@ void taskTemperature(void* parameter) {
     Serial.println("✅ Czujnik bojlera: podłączony");
   } else {
     T.bojler.ok = false;
+    T.bojler.temperatura = DEVICE_DISCONNECTED_C; // Wartość początkowa błędu
     Serial.println("⚠️ Czujnik bojlera: NIE podłączony");
   }
   
@@ -131,45 +138,56 @@ void taskTemperature(void* parameter) {
                   U.radiatorT_critical ? "TAK" : "NIE");
   } else {
     T.radiator.ok = false;
-    Serial.printf("⚠️ Czujnik radiatora: NIE podłączony (krytyczny: %s)\n", 
-                  U.radiatorT_critical ? "TAK" : "NIE");
+    T.radiator.temperatura = DEVICE_DISCONNECTED_C;
+    Serial.printf("⚠️ Czujnik radiatora: NIE podłączony (krytyczny: %s)\n",
+                U.radiatorT_critical ? "TAK" : "NIE");
   }
   
   while (true) {
-    WDT_RESET();
+    WDT_RESET(); // Kopnięcie watchdoga (bardzo ważne w zadaniach FreeRTOS)
     
     // === CZUJNIK BOJLERA ===
     if (countBojler > 0) {
       sensorBojler.requestTemperatures();
-      float temp = sensorBojler.readTemperature(0);
-      if (temp != DEVICE_DISCONNECTED_C) {
+      float temp = sensorBojler.readTemperature(0); // Odczyt z indeksu 0
+      
+      if (temp != DEVICE_DISCONNECTED_C && temp > -55.0f && temp < 125.0f) {
         T.bojler.temperatura = temp;        
         T.bojler.ok = true;
       } else {
         T.bojler.ok = false;
+        T.bojler.temperatura = DEVICE_DISCONNECTED_C; // Wpisujemy błąd przy awarii w locie
       }      
+    } else {
+      T.bojler.ok = false;
+      T.bojler.temperatura = DEVICE_DISCONNECTED_C;
     }
     
     // === CZUJNIK RADIATORA ===
     if (countRadiator > 0) {
       sensorRadiator.requestTemperatures();
       float temp = sensorRadiator.readTemperature(0);
-      if (temp != DEVICE_DISCONNECTED_C) {
+      
+      if (temp != DEVICE_DISCONNECTED_C && temp > -55.0f && temp < 125.0f) {
         T.radiator.temperatura = temp;
         T.radiator.ok = true;
       } else {
         T.radiator.ok = false;
+        T.radiator.temperatura = DEVICE_DISCONNECTED_C;
       }
     } else {
-      // Brak czujnika – ustaw domyślną temperaturę (bezpieczną)
-      T.radiator.ok = false;      
+      T.radiator.ok = false;
+      T.radiator.temperatura = DEVICE_DISCONNECTED_C;
     }
+
+    // Wyświetlanie logów
     Serial.printf("📡 Odczyt temperatury: bojler=%.2f°C, radiator=%.2f°C\n", 
-                    T.bojler.temperatura, T.radiator.temperatura);
+                  T.bojler.temperatura, T.radiator.temperatura);
     LOG_INFO("Temperature", "Odczyt temperatury: bojler=%.2f°C, radiator=%.2f°C", 
-                    T.bojler.temperatura, T.radiator.temperatura);
+             T.bojler.temperatura, T.radiator.temperatura);
     
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // Odczekaj 5 sekund przed kolejnym odczytem
+    vTaskDelay(pdMS_TO_TICKS(5000)); 
   }
 }
 
@@ -205,7 +223,8 @@ void taskHeaterControl(void* parameter) {
       heaterControl.update();
     }
     
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    //vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100)); 
   }
 }
     
@@ -235,7 +254,8 @@ void taskNTPSync(void* parameter) {
       resetDailyCounters();
     }
     
-    vTaskDelay(60000 / portTICK_PERIOD_MS);  // co minutę
+    //vTaskDelay(60000 / portTICK_PERIOD_MS);  // co minutę
+    vTaskDelay(pdMS_TO_TICKS(6000)); 
   }
 }
 
@@ -246,7 +266,8 @@ void taskStatisticsMonitor(void* parameter) {
   int waitCount = 0;
   while (!ntp.isSynced() && waitCount < 30) {
     WDT_RESET();
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(1000)); 
     waitCount++;
   }
   
@@ -290,7 +311,8 @@ void taskStatisticsMonitor(void* parameter) {
       }
     }
     
-    vTaskDelay(1000 / portTICK_PERIOD_MS);  // sprawdzaj co sekundę, ale zapisuj co minutę
+    //vTaskDelay(1000 / portTICK_PERIOD_MS);  // sprawdzaj co sekundę, ale zapisuj co minutę
+    vTaskDelay(pdMS_TO_TICKS(1000)); 
   }
 }
 // ========== ZADANIE 8: ZAPIS HISTORII TEMPERATURY CO 2 MINUTY ==========
@@ -326,7 +348,8 @@ void taskTemperatureLogger(void* parameter) {
       }
     }
     
-    vTaskDelay(10000 / portTICK_PERIOD_MS);  // sprawdzaj co 10 sekund
+    //vTaskDelay(10000 / portTICK_PERIOD_MS);  // sprawdzaj co 10 sekund
+    vTaskDelay(pdMS_TO_TICKS(10000)); 
   }
 }
 

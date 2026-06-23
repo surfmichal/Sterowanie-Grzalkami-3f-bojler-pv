@@ -18,8 +18,7 @@ StycznikState stycznik = {false, false, 0, false, false};
 CzasNTP czasNTP = {0, 0, 0, 0, 0, 0, 0, 0, 0, false};
 LicznikiCzasu liczniki = {0};
 TemperatureFIFO tempFIFO = {{0}, 0, 0, 0};
-Temperatury T = {
-  .temperatura_bojlera = 0,
+Temperatury T = {  
   .bojler = {0.0f, false, {0}, "Bojler", 0},
   .radiator = {0.0f, false, {0}, "Radiator", 0}
 };

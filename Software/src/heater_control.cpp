@@ -6,7 +6,6 @@
 
 extern StycznikState stycznik;
 extern Zmienne Z;
-
 extern ModbusData modbusData;
 
 HeaterControl::HeaterControl() {
@@ -24,14 +23,14 @@ void HeaterControl::begin() {
   pinMode(LED_GRZALKA3_pin, OUTPUT);
   pinMode(STYCZNIK_PIN, OUTPUT);
   
-  // Stan początkowy: WSZYSTKO WYŁĄCZONE (HIGH dla odwróconej logiki)
+  // Stan początkowy: WSZYSTKO WYŁĄCZONE (Zgodnie z Twoją konfiguracją sprzętową)
   digitalWrite(GRZALKA1_pin, GRZALKA_OFF);
   digitalWrite(GRZALKA2_pin, GRZALKA_OFF);
   digitalWrite(GRZALKA3_pin, GRZALKA_OFF);
-  digitalWrite(LED_GRZALKA1_pin, OFF);
-  digitalWrite(LED_GRZALKA2_pin, OFF);
-  digitalWrite(LED_GRZALKA3_pin, OFF);
-  digitalWrite(STYCZNIK_PIN, STYCZNIK_OFF);  // HIGH = stycznik wyłączony
+  digitalWrite(LED_GRZALKA1_pin, LED_OFF);
+  digitalWrite(LED_GRZALKA2_pin, LED_OFF);
+  digitalWrite(LED_GRZALKA3_pin, LED_OFF);
+  digitalWrite(STYCZNIK_PIN, STYCZNIK_OFF);
 
   Z.heater1_flag = false;  // Aktualizacja flag dla strony WWW
   Z.heater2_flag = false; 
@@ -43,6 +42,7 @@ void HeaterControl::begin() {
   stycznik.waitingToTurnOn = false;
   stycznik.waitingToTurnOff = false;
   stycznik.lastChange = 0;
+  
   Serial.println("HeaterControl zainicjalizowany");
   LOG_INFO("Main", "HeaterControl zainicjalizowany");
 }
@@ -71,23 +71,21 @@ bool HeaterControl::isTemperatureSafe() {
   }
   
   // === RADIATOR ===
-  if (T.radiator.ok) {
-    if (T.radiator.temperatura >= U.radiatorTmax) {
-      LOG_ERROR_DEDUP("HeaterControl", "Temperatura radiatora %.1f°C >= %.1f°C - BLOKADA!", 
+  if (U.radiatorT_critical) {
+    if (T.radiator.ok) {
+      if (T.radiator.temperatura >= U.radiatorTmax) {
+        LOG_ERROR_DEDUP("HeaterControl", "Temperatura radiatora %.1f°C >= %.1f°C - BLOKADA!", 
+                        T.radiator.temperatura, U.radiatorTmax);
+        return false;
+      }
+      
+      if (T.radiator.ok && T.radiator.temperatura >= U.radiatorTmax - 5.0) {
+        LOG_WARN_DEDUP("HeaterControl", "Ostrzeżenie: radiator %.1f°C (blisko limitu %.1f°C)", 
                       T.radiator.temperatura, U.radiatorTmax);
-      return false;
-    }
-    
-    if (T.radiator.temperatura >= U.radiatorTmax - 5.0) {
-      LOG_WARN_DEDUP("HeaterControl", "Ostrzeżenie: radiator %.1f°C (blisko limitu %.1f°C)", 
-                     T.radiator.temperatura, U.radiatorTmax);
-    }
-  } else {
-    if (U.radiatorT_critical) {
+      }
+    } else {
       LOG_ERROR_DEDUP("HeaterControl", "Czujnik radiatora nie działa i jest KRYTYCZNY - BLOKADA!");
       return false;
-    } else {
-      LOG_WARN_DEDUP("HeaterControl", "Czujnik radiatora nie działa (NIEKRYTYCZNY)");
     }
   }
   return true;
@@ -95,22 +93,17 @@ bool HeaterControl::isTemperatureSafe() {
 
 // Natychmiastowe załączenie gdy napięcie >= U_on
 bool HeaterControl::shouldTurnOn(float voltage) {
-  // 🔥 Główny wyłącznik systemu grzania
-  if (!U.HeaterEnabled) return false;
-  
-  // Zabezpieczenia
+  if (!U.HeaterEnabled) return false;  
   if (!isModbusDataValid()) return false;
   if (!isTemperatureSafe()) return false;
   
-  // Regulacja
   return (voltage >= U.Ugrid_on);
 }
 
 // Rozpocznij odliczanie do wyłączenia gdy napięcie <= U_off
 bool HeaterControl::shouldStartTurnOffTimer(float voltage) {
-  //if (!heater_config.enabled) return false;
   if (!isModbusDataValid()) return false;
-  if (!isTemperatureSafe()) return true;  // Jeśli temperatura niebezpieczna - chcemy wyłączyć
+  if (!isTemperatureSafe()) return true;  // Jeśli temperatura niebezpieczna - natychmiast wyłączamy
   
   return (voltage <= U.Ugrid_off);
 }
@@ -162,7 +155,7 @@ void HeaterControl::turnOnNow(int index) {
       LOG_INFO_DEDUP("HeaterControl", "[%s] 🔥 GRZAŁKA ZAŁĄCZONA (napięcie: %.1fV, T: %.1f°C)", 
                      phaseName, voltage, T.bojler.temperatura);
       
-      // Zliczanie załączeń
+      // Zliczanie załączeń (zostaje tutaj, usunięte z pętli update)
       incrementHeaterCycles(index + 1);
     }
   }
@@ -174,7 +167,7 @@ void HeaterControl::startTurnOffTimer(int index) {
   
   if (state->state && !state->waitingToTurnOff) {
     state->waitingToTurnOff = true;
-    state->turnOffTime = millis() + U.HeaterDelay_off_ms;  // Użyj poprawnej nazwy pola
+    state->turnOffTime = millis() + U.HeaterDelay_off_ms;
     
     const char* phaseName = "";
     float voltage = 0;
@@ -218,19 +211,17 @@ void HeaterControl::cancelTurnOffTimer(int index) {
 
 // ========== FUNKCJE STEROWANIA STYCZNIKIEM ==========
 
-// Sprawdza czy jakikolwiek triak ma być załączony
 bool HeaterControl::isAnyHeaterRequested() {
   for (int i = 0; i < 3; i++) {
     float voltage = (i == 0 ? modbusData.gridVoltage1 : 
-                     (i == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
-    if (shouldTurnOn(voltage)) {
+                    (i == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
+    if (shouldTurnOn(voltage) || (heater_states[i]->state && !heater_states[i]->waitingToTurnOff)) {
       return true;
     }
   }
   return false;
 }
 
-// Aktualizacja flagi stanu grzałki w strukturze Z
 void HeaterControl::updateHeaterFlag(int index, bool state) {
   switch(index) {
     case 0: Z.heater1_flag = state; break;
@@ -239,9 +230,8 @@ void HeaterControl::updateHeaterFlag(int index, bool state) {
   }
 }
 
-// Załącz stycznik
 void HeaterControl::turnOnContactor() {
-  if (stycznik.state) return;  // już załączony
+  if (stycznik.state) return;
   
   digitalWrite(STYCZNIK_PIN, STYCZNIK_ON);
   stycznik.state = true;
@@ -251,9 +241,8 @@ void HeaterControl::turnOnContactor() {
   LOG_INFO("HeaterControl", "STYCZNIK ZAŁĄCZONY");
 }
 
-// Wyłącz stycznik
 void HeaterControl::turnOffContactor() {
-  if (!stycznik.state) return;  // już wyłączony
+  if (!stycznik.state) return;
   
   digitalWrite(STYCZNIK_PIN, STYCZNIK_OFF);
   stycznik.state = false;
@@ -263,43 +252,37 @@ void HeaterControl::turnOffContactor() {
   LOG_INFO("HeaterControl", "STYCZNIK WYŁĄCZONY");
 }
 
-// Aktualizacja stanu stycznika (wywoływana co 1 sekundę)
 void HeaterControl::updateContactor() {
   bool anyHeaterNeeded = isAnyHeaterRequested();
   unsigned long now = millis();
   
   if (anyHeaterNeeded) {
-    // Potrzebujemy załączyć triaki
     stycznik.requested = true;
+    stycznik.waitingToTurnOff = false; // Reset licznika wyłączania jeśli nagle potrzeba grzania
     
     if (!stycznik.state && !stycznik.waitingToTurnOn) {
-      // Stycznik wyłączony - rozpocznij procedurę załączania
       stycznik.waitingToTurnOn = true;
       stycznik.lastChange = now;
       Serial.println("⏳ STYCZNIK: rozpoczynam odliczanie do załączenia");
       LOG_INFO("HeaterControl", "Stycznik: rozpoczynam odliczanie do załączenia");
     }
     
-    // Jeśli czekamy na załączenie i minął czas
     if (stycznik.waitingToTurnOn && (now - stycznik.lastChange) >= STYCZNIK_DELAY_ON) {
       turnOnContactor();
     }
   } else {
-    // Nie potrzeba żadnych triaków
     stycznik.requested = false;
+    stycznik.waitingToTurnOn = false; // Reset licznika załączania
     
     if (stycznik.state && !stycznik.waitingToTurnOff) {
-      // Stycznik załączony, ale nie potrzeba triaków - rozpocznij wyłączanie
       stycznik.waitingToTurnOff = true;
       stycznik.lastChange = now;
       Serial.println("⏳ STYCZNIK: rozpoczynam odliczanie do wyłączenia");
       LOG_INFO("HeaterControl", "STYCZNIK: rozpoczynam odliczanie do wyłączenia");
     }
     
-    // Jeśli czekamy na wyłączenie i minął czas
     if (stycznik.waitingToTurnOff && (now - stycznik.lastChange) >= STYCZNIK_DELAY_OFF) {
       turnOffContactor();
-
     }
   }
 }
@@ -309,21 +292,11 @@ void HeaterControl::updateHeaterState(int index) {
   HeaterState* state = heater_states[index];
   bool newState = state->state;
   
-  // Jeśli stan się nie zmienił, nic nie robimy
-  // (to sprawdzenie jest już w update(), ale dla bezpieczeństwa)
-  // if (state->state == newState) return;  // nie potrzebne
-  
-  // Sprawdź czy stycznik jest załączony (przy załączaniu)
   if (newState == true && !stycznik.state && !stycznik.waitingToTurnOn) {
     Serial.printf("[%s] ⚠️ Nie mogę załączyć triaka - stycznik wyłączony!\n", 
                   index == 0 ? "L1" : (index == 1 ? "L2" : "L3"));
-    LOG_INFO("HeaterControl", "[%s] Nie mogę załączyć triaka - stycznik wyłączony!", 
-             index == 0 ? "L1" : (index == 1 ? "L2" : "L3"));
     return;
   }
-  
-  // NATYCHMIASTOWA ZMIANA STANU (bez opóźnienia)
-  // state->state już jest ustawione przez turnOnNow/startTurnOffTimer
   
   int pin = -1;
   int ledPin = -1;
@@ -334,43 +307,47 @@ void HeaterControl::updateHeaterState(int index) {
       pin = GRZALKA1_pin; 
       ledPin = LED_GRZALKA1_pin; 
       phaseName = "L1";
-      updateHeaterFlag(index, newState);
       break;
     case 1: 
       pin = GRZALKA2_pin; 
       ledPin = LED_GRZALKA2_pin; 
       phaseName = "L2";
-      updateHeaterFlag(index, newState);
       break;
     case 2: 
       pin = GRZALKA3_pin; 
       ledPin = LED_GRZALKA3_pin; 
       phaseName = "L3";
-      updateHeaterFlag(index, newState);
       break;
   }
   
   if (pin != -1) {
-    digitalWrite(pin, newState ? GRZALKA_ON : GRZALKA_OFF);
-    digitalWrite(ledPin, newState ? HIGH : LOW);
+    // Odczytujemy aktualny stan pinu, aby uniknąć zbędnego klikania w logach logowania
+    byte currentPinState = digitalRead(pin);
+    byte targetPinState = newState ? GRZALKA_ON : GRZALKA_OFF;
     
-    float voltage = (index == 0 ? modbusData.gridVoltage1 : 
-                    (index == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
-    
-    Serial.printf("[%s] %s (napięcie: %.1fV, stycznik: %s)\n", 
-                  phaseName,
-                  newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
-                  voltage,
-                  stycznik.state ? "ON" : "OFF");
-    LOG_INFO("HeaterControl", "[%s] %s (napięcie: %.1fV, stycznik: %s)", 
-             phaseName,
-             newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
-             voltage,
-             stycznik.state ? "ON" : "OFF");
-             
+    if (currentPinState != targetPinState) {
+      digitalWrite(pin, targetPinState);
+      digitalWrite(ledPin, newState ? LED_ON : LED_OFF); // Zgodnie z Twoją logiką LED_ON/OFF
+      updateHeaterFlag(index, newState);
+      
+      float voltage = (index == 0 ? modbusData.gridVoltage1 : 
+                      (index == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
+      
+      Serial.printf("[%s] %s (napięcie: %.1fV, stycznik: %s)\n", 
+                    phaseName,
+                    newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
+                    voltage,
+                    stycznik.state ? "ON" : "OFF");
+      LOG_INFO("HeaterControl", "[%s] %s (napięcie: %.1fV, stycznik: %s)", 
+               phaseName,
+               newState ? "ZAŁĄCZONA 🔥" : "WYŁĄCZONA ❄️",
+               voltage,
+               stycznik.state ? "ON" : "OFF");
+    }
   }
 }
-// ========== ZMIENIONA FUNKCJA update() ==========
+
+// ========== GŁÓWNA FUNKCJA update() ==========
 void HeaterControl::update() {
   // ===== 1. SPRAWDŹ DANE MODBUS =====
   if (!isModbusDataValid()) {
@@ -388,18 +365,16 @@ void HeaterControl::update() {
       digitalWrite(GRZALKA1_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA2_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA3_pin, GRZALKA_OFF);
-      digitalWrite(LED_GRZALKA1_pin, LOW);
-      digitalWrite(LED_GRZALKA2_pin, LOW);
-      digitalWrite(LED_GRZALKA3_pin, LOW);
+      digitalWrite(LED_GRZALKA1_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA2_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA3_pin, LED_OFF);
       
-      // Aktualizuj flagi dla strony WWW
       Z.heater1_flag = false;
       Z.heater2_flag = false;
       Z.heater3_flag = false;
       LOG_INFO("HeaterControl:Update", "Brak danych Modbus - wyłączam wszystko!!!");
     }
     if (stycznik.state) turnOffContactor();
-    LOG_INFO("HeaterControl:Update", "Brak danych Modbus - wyłączam styznik!!!");
     return;
   }
   
@@ -409,8 +384,6 @@ void HeaterControl::update() {
     for (int i = 0; i < 3; i++) {
       if (heater_states[i]->state || heater_states[i]->waitingToTurnOff) {
         wasAnythingOn = true;
-        Serial.printf("⚠️ Temperatura %.1f°C niebezpieczna - wyłączam grzałkę %d!\n", 
-                      Z.T_current, i+1);
         heater_states[i]->state = false;
         heater_states[i]->waitingToTurnOff = false;
         heater_states[i]->turnOffTime = 0;
@@ -420,17 +393,16 @@ void HeaterControl::update() {
       digitalWrite(GRZALKA1_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA2_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA3_pin, GRZALKA_OFF);
-      digitalWrite(LED_GRZALKA1_pin, LOW);
-      digitalWrite(LED_GRZALKA2_pin, LOW);
-      digitalWrite(LED_GRZALKA3_pin, LOW);
+      digitalWrite(LED_GRZALKA1_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA2_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA3_pin, LED_OFF);
       
       Z.heater1_flag = false;
       Z.heater2_flag = false;
       Z.heater3_flag = false;
-      LOG_INFO("HeaterControl:Update", "Temperatura %.1f°C niebezpieczna - wyłączam grzałki!!!", Z.T_current);
+      LOG_INFO("HeaterControl:Update", "Temperatura niebezpieczna - wyłączam grzałki!!!");
     }
     if (stycznik.state) turnOffContactor();
-    LOG_INFO("HeaterControl:Update", "Temperatura %.1f°C niebezpieczna - wyłączam styznik!!!", Z.T_current);
     return;
   }
   
@@ -444,21 +416,25 @@ void HeaterControl::update() {
                          modbusData.gridVoltage3};
     
     for (int i = 0; i < 3; i++) {
-      WDT_RESET();  // 🔥 kopnij watchdoga przy każdej fazie (ważne!)
+      WDT_RESET();  // kopnij watchdoga
       
       float phaseVoltage = voltages[i];
       HeaterState* state = heater_states[i];
       
       if (!state->state) {
-        // Grzałka wyłączona - sprawdź czy załączyć
+        // Grzałka wyłączona - sprawdź czy założyć
         if (shouldTurnOn(phaseVoltage)) {
           turnOnNow(i);
-          incrementHeaterCycles(i + 1);  // zlicz załączenie
         }
       } else {
-        // Grzałka załączona - sprawdź czy wyłączyć
+        // Grzałka załączona - sprawdź liczniki wyłączeń
         if (state->waitingToTurnOff) {
-          if (shouldCancelTurnOffTimer(phaseVoltage)) {
+          // AKTUALIZACJA: Sprawdzenie czy czas Td już minął, aby fizycznie WYŁĄCZYĆ grzałkę
+          if (millis() >= state->turnOffTime) {
+            state->state = false;
+            state->waitingToTurnOff = false;
+            state->turnOffTime = 0;
+          } else if (shouldCancelTurnOffTimer(phaseVoltage)) {
             cancelTurnOffTimer(i);
           }
         } else {
@@ -484,15 +460,14 @@ void HeaterControl::update() {
       digitalWrite(GRZALKA1_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA2_pin, GRZALKA_OFF);
       digitalWrite(GRZALKA3_pin, GRZALKA_OFF);
-      digitalWrite(LED_GRZALKA1_pin, LOW);
-      digitalWrite(LED_GRZALKA2_pin, LOW);
-      digitalWrite(LED_GRZALKA3_pin, LOW);
+      digitalWrite(LED_GRZALKA1_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA2_pin, LED_OFF);
+      digitalWrite(LED_GRZALKA3_pin, LED_OFF);
       
       Z.heater1_flag = false;
       Z.heater2_flag = false;
       Z.heater3_flag = false;
       LOG_INFO("HeaterControl:Update", "Stycznik wyłączony - wyłączam wszystkie triaki!");
-
     }
   }
 }
@@ -504,9 +479,15 @@ void HeaterControl::setThresholds(float U_on, float U_off) {
   Serial.printf("⚙️ Konfiguracja grzałek: U_on=%.1fV, U_off=%.1fV\n", U_on, U_off);
 }
 
-void HeaterControl::setTurnOffDelay(uint16_t Td_ms) {
-  U.HeaterDelay_off_ms = Td_ms;  // Użyj poprawnej nazwy pola
-  Serial.printf("⚙️ Opóźnienie wyłączenia: %dms\n", Td_ms);
+void HeaterControl::setDelays(uint16_t Td_on_ms, uint16_t Td_off_ms) {
+  U.HeaterDelay_on_ms = Td_on_ms;
+  U.HeaterDelay_off_ms = Td_off_ms;
+  Serial.printf("⚙️ Konfiguracja czasu opóźnień: dealy_on=%dms, delay_off=%dms\n, Td_on_ms, Td_off_ms");
+}
+
+void HeaterControl::enableSystem(bool heaterEn){
+  U.HeaterEnabled = heaterEn;
+  Serial.printf("⚙️ Załączanie systemu grzałek: HeaterEnabled=%s\n", heaterEn ? "WŁĄCZONY" : "WYŁĄCZONY");
 }
 
 bool HeaterControl::getHeaterState(int heaterIndex) {
@@ -520,11 +501,6 @@ int HeaterControl::getActiveHeatersCount() {
     if (heater_states[i]->state) count++;
   }
   return count;
-}
-
-void HeaterControl::setBojlerTemperature(float temp) {
-  Z.T_current = temp;
-  Z.T_sensor_ok = (temp > -55 && temp < 125);
 }
 
 void HeaterControl::setModbusStatus(bool connected) {
@@ -543,8 +519,7 @@ void HeaterControl::printStatus() {
                 heater_states[2]->state ? "ON " : 
                   (heater_states[2]->waitingToTurnOff ? "Td " : "OFF"),
                 modbusData.gridVoltage3);
-  Serial.printf("🌡️ Temperatura: %.1f°C / %.1f°C | Modbus: %s | System: %s\n",
-                Z.T_current, U.bojlerTmax,
+  Serial.printf("🌡️ Temperatura: %.1f°C / %.1f°C | Modbus: %s\n",
+                T.bojler.temperatura, U.bojlerTmax,
                 modbusData.connected ? "OK" : "BRAK");
-                //heater_config.enabled ? "AKTYWNY" : "NIEAKTYWNY");
 }

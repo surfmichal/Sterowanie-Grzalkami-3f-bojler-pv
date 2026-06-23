@@ -2,7 +2,6 @@
 #define ONEWIRE_MANAGER_H
 
 #include <Arduino.h>
-#include <OneWire.h>
 #include <DallasTemperature.h>
 
 class OneWireManager {

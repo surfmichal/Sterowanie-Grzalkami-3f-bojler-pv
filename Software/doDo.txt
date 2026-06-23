@@ -1,0 +1,5 @@
+- algorytm opóźnienia załączania każdej z grzałek
+- sprawdzić algorytm wyłączenia każdej z grzałek
+- 
+
+- przekierowanie na adres po wprowadzeniu adresu ip

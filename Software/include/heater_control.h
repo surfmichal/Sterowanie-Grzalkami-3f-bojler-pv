@@ -13,13 +13,20 @@ private:
   bool shouldTurnOn(float voltage);                    // Sprawdź czy załączyć
   bool shouldStartTurnOffTimer(float voltage);         // Sprawdź czy wyłączyć
   bool shouldCancelTurnOffTimer(float voltage);        // Sprawdź czy anulować wyłączenie
-  
+   
   void startTurnOnTimer(int index);                    // Rozpocznij odliczanie do załączenia
   void cancelTurnOnTimer(int index);                   // Anuluj odliczanie do załączenia
   void turnOnNow(int index);                           // Natychmiastowe załączenie
   void startTurnOffTimer(int index);                   // Rozpocznij odliczanie do wyłączenia
   void cancelTurnOffTimer(int index);                  // Anuluj odliczanie do wyłączenia
   void updateHeaterState(int index);                   // Aktualizacja stanu (sprawdza timery)
+
+  bool isAnyHeaterRequested();    
+  void updateHeaterFlag(int index, bool state);
+  void turnOnContactor();
+  void turnOffContactor();
+  void updateContactor();  
+  void setTurnOffDelay(uint16_t Td_ms);
   
 public:
   HeaterControl();

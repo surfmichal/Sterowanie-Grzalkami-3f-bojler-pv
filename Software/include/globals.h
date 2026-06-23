@@ -235,10 +235,6 @@ struct CzujnikTemp {
 
 // ========== STRUKTURA TEMPERATUR (rozszerzona) ==========
 struct Temperatury {
-  // Dla kompatybilności (istniejący kod)
-  int8_t temperatura_bojlera;
-  
-  // Nowe czujniki
   CzujnikTemp bojler;
   CzujnikTemp radiator;
   

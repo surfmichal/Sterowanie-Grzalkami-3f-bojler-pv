@@ -252,41 +252,57 @@ void HeaterControl::turnOffContactor() {
   LOG_INFO("HeaterControl", "STYCZNIK WYŁĄCZONY");
 }
 
+bool HeaterControl::isAnyHeaterPhysicallyOn() {
+  for (int i = 0; i < 3; i++) {
+    if (heater_states[i]->state) return true;
+  }
+  return false;
+}
+
 void HeaterControl::updateContactor() {
   bool anyHeaterNeeded = isAnyHeaterRequested();
+  bool anyHeaterOn = isAnyHeaterPhysicallyOn();
   unsigned long now = millis();
   
+  // ===== LOGIKA ZAŁĄCZANIA STYCZNIKA =====
   if (anyHeaterNeeded) {
     stycznik.requested = true;
-    stycznik.waitingToTurnOff = false; // Reset licznika wyłączania jeśli nagle potrzeba grzania
+    stycznik.waitingToTurnOff = false;
     
     if (!stycznik.state && !stycznik.waitingToTurnOn) {
       stycznik.waitingToTurnOn = true;
       stycznik.lastChange = now;
       Serial.println("⏳ STYCZNIK: rozpoczynam odliczanie do załączenia");
-      LOG_INFO("HeaterControl", "Stycznik: rozpoczynam odliczanie do załączenia");
     }
     
     if (stycznik.waitingToTurnOn && (now - stycznik.lastChange) >= STYCZNIK_DELAY_ON) {
       turnOnContactor();
     }
-  } else {
+  } 
+  // ===== LOGIKA WYŁĄCZANIA STYCZNIKA =====
+  else {
     stycznik.requested = false;
-    stycznik.waitingToTurnOn = false; // Reset licznika załączania
+    stycznik.waitingToTurnOn = false;
+    
+    // ⚠️ Nie wyłączaj stycznika jeśli triaki są nadal załączone!
+    if (anyHeaterOn) {
+      Serial.println("⚠️ STYCZNIK: Nie mogę wyłączyć - triaki są załączone!");
+      stycznik.waitingToTurnOff = false;  // przerwij odliczanie
+      return;
+    }
     
     if (stycznik.state && !stycznik.waitingToTurnOff) {
       stycznik.waitingToTurnOff = true;
       stycznik.lastChange = now;
-      Serial.println("⏳ STYCZNIK: rozpoczynam odliczanie do wyłączenia");
-      LOG_INFO("HeaterControl", "STYCZNIK: rozpoczynam odliczanie do wyłączenia");
+      Serial.printf("⏳ STYCZNIK: rozpoczynam odliczanie do wyłączenia (%dms)\n", 
+                    U.ContactorDelay_off_ms);
     }
     
-    if (stycznik.waitingToTurnOff && (now - stycznik.lastChange) >= STYCZNIK_DELAY_OFF) {
+    if (stycznik.waitingToTurnOff && (now - stycznik.lastChange) >= U.ContactorDelay_off_ms) {
       turnOffContactor();
     }
   }
 }
-
 // ========== FUNKCJA updateHeaterState ==========
 void HeaterControl::updateHeaterState(int index) {
   HeaterState* state = heater_states[index];
@@ -422,9 +438,10 @@ void HeaterControl::update() {
       HeaterState* state = heater_states[i];
       
       if (!state->state) {
-        // Grzałka wyłączona - sprawdź czy założyć
+        // Grzałka wyłączona - sprawdź czy załączyć
         if (shouldTurnOn(phaseVoltage)) {
           turnOnNow(i);
+          updateHeaterFlag(i, true);
         }
       } else {
         // Grzałka załączona - sprawdź liczniki wyłączeń

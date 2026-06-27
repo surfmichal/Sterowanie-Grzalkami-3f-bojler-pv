@@ -26,6 +26,7 @@ private:
   void turnOnContactor();
   void turnOffContactor();
   void updateContactor();  
+  bool isAnyHeaterPhysicallyOn();
   void setTurnOffDelay(uint16_t Td_ms);
   
 public:

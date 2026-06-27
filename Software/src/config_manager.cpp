@@ -122,6 +122,7 @@ if (Ustawienia) {
   U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
   U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
+  U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
   U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
   U.radiatorTmax = Ustawienia["radiatorTmax"] | 60.0;
   U.radiatorT_critical = Ustawienia["radiatorT_critical"] | true;
@@ -132,6 +133,7 @@ if (Ustawienia) {
   Serial.printf("   Ugrid_off: %.1f V\n", U.Ugrid_off);
   Serial.printf("   HeaterDelay_on_ms: %d ms\n", U.HeaterDelay_on_ms);
   Serial.printf("   HeaterDelay_off_ms: %d ms\n", U.HeaterDelay_off_ms);
+  Serial.printf("   ContactorDelay_off_ms: %d ms\n", U.ContactorDelay_off_ms);
   Serial.printf("   bojlerTmax: %.1f °C\n", U.bojlerTmax);
   Serial.printf("   radiatorTmax: %.1f °C\n", U.radiatorTmax);
   Serial.printf("   radiatorT_critical: %s\n", U.radiatorT_critical ? "true" : "false");
@@ -143,6 +145,7 @@ if (Ustawienia) {
   U.Ugrid_off = 250.0;
   U.HeaterDelay_on_ms = 1000;
   U.HeaterDelay_off_ms = 5000;
+  U.ContactorDelay_off_ms = 5000;
   U.bojlerTmax = 80.0;
   U.radiatorT_critical = true;
   U.radiatorTmax = 60.0;
@@ -326,6 +329,7 @@ bool ConfigManager::saveUstawienia() {
   doc["Ustawienia"]["Ugrid_off"] = U.Ugrid_off;
   doc["Ustawienia"]["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
   doc["Ustawienia"]["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
+  doc["Ustawienia"]["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
   doc["Ustawienia"]["bojlerTmax"] = U.bojlerTmax;
   doc["Ustawienia"]["radiatorTmax"] = U.radiatorTmax;
   doc["Ustawienia"]["radiatorT_critical"] = U.radiatorT_critical;
@@ -380,6 +384,7 @@ bool ConfigManager::loadUstawienia() {
     U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
     U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
     U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
+    U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
     U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
     U.radiatorTmax = Ustawienia["radiatorTmax"] | 70.0;
     U.radiatorT_critical = Ustawienia["radiatorT_critical"] | false;

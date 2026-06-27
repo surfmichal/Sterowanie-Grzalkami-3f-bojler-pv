@@ -64,6 +64,7 @@ struct Zmienne {
   bool heater2_flag;     // stan pracy grzalki 2
   bool heater3_flag;     // stan pracy grzalki 3
   bool Tmax_flag;         // stan osiagniecia temperatury max
+  bool Contractor_flag;    // stan stycznika
   //bool modbus_state_ok;  // stan polaczenia modbus
   //float T_current;       // Aktualna temperatura bojlera(°C)
   //bool T_sensor_ok;      // Czy czujnik działa  
@@ -75,6 +76,7 @@ struct Ustawienia {
   float Ugrid_off;              // ← float
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
+  uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
   float bojlerTmax;             // ← float
   float radiatorTmax;           // ← float 
   bool radiatorT_critical;      // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
@@ -110,7 +112,7 @@ struct HeaterState {
   unsigned long turnOnTime;   // Czas kiedy należy włączyć
   unsigned long turnOffTime;  // Czas kiedy należy wyłączyć
   bool waitingToTurnOn;       // Czy czeka na włączenie
-  bool waitingToTurnOff;      // Czy czeka na wyłączenie
+  bool waitingToTurnOff;      // Czy czeka na wyłączenie  
 };
 
 struct ModbusData {
@@ -235,6 +237,8 @@ struct CzujnikTemp {
 
 // ========== STRUKTURA TEMPERATUR (rozszerzona) ==========
 struct Temperatury {
+    
+  // Czujniki
   CzujnikTemp bojler;
   CzujnikTemp radiator;
   

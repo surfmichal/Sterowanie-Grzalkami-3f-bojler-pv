@@ -14,8 +14,8 @@ private:
   bool shouldStartTurnOffTimer(float voltage);         // Sprawdź czy wyłączyć
   bool shouldCancelTurnOffTimer(float voltage);        // Sprawdź czy anulować wyłączenie
    
-  void startTurnOnTimer(int index);                    // Rozpocznij odliczanie do załączenia
-  void cancelTurnOnTimer(int index);                   // Anuluj odliczanie do załączenia
+  //void startTurnOnTimer(int index);                    // Rozpocznij odliczanie do załączenia
+  //void cancelTurnOnTimer(int index);                   // Anuluj odliczanie do załączenia
   void turnOnNow(int index);                           // Natychmiastowe załączenie
   void startTurnOffTimer(int index);                   // Rozpocznij odliczanie do wyłączenia
   void cancelTurnOffTimer(int index);                  // Anuluj odliczanie do wyłączenia
@@ -27,7 +27,10 @@ private:
   void turnOffContactor();
   void updateContactor();  
   bool isAnyHeaterPhysicallyOn();
-  void setTurnOffDelay(uint16_t Td_ms);
+  void startTurnOnTimer(int index);
+  void cancelTurnOnTimer(int index);
+  void executeTurnOn(int index);
+  //void setTurnOffDelay(uint16_t Td_ms);
   
 public:
   HeaterControl();
@@ -40,7 +43,7 @@ public:
   
   bool getHeaterState(int heaterIndex);
   int getActiveHeatersCount();
-  void setBojlerTemperature(float temp);
+  //void setBojlerTemperature(float temp);
   void setModbusStatus(bool connected);
   void printStatus();
 };

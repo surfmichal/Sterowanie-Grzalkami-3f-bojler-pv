@@ -71,7 +71,17 @@
                         <label>Opóźnienie wyłączenia (ms)</label>
                         <input type='number' id='heater_delay_off' step='1000' placeholder='5000'>
                     </div>
-                </div>   
+                </div>  
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Opóźnienie wyłączania stycznika (ms)</label>
+                        <input type='number' id='ContactorDelay_off_ms' step='1000' placeholder='5000'>                        
+                    </div>
+                    <div class='form-group'>
+                        <label>---</label>
+                        <input type='text' disabled placeholder='---'>
+                    </div>
+                </div>     
                 <div class='row'>
                     <div class='form-group'>
                         <label>Maksymalna temp. bojlera (°C)</label>
@@ -242,6 +252,7 @@
                     document.getElementById('heater_u_off').value = data.u_off ?? 250;
                     document.getElementById('heater_delay_on').value = data.delay_on_ms ?? 1000;
                     document.getElementById('heater_delay_off').value = data.delay_off_ms ?? 5000;
+                    document.getElementById('ContactorDelay_off_ms').value = data.ContactorDelay_off_ms ?? 5000;
                     document.getElementById('bojler_Tmax').value = data.bojler_Tmax ?? 85;        // ← duże T
                     document.getElementById('heater_enabled').checked = data.Heater_enabled !== false;
                     document.getElementById('radiatorT_critical').checked = data.radiatorT_critical !== false;
@@ -329,6 +340,7 @@
                 u_off: parseFloat(document.getElementById('heater_u_off').value),
                 delay_on_ms: parseInt(document.getElementById('heater_delay_on').value),
                 delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
+                ContactorDelay_off_ms: parseInt(document.getElementById('ContactorDelay_off_ms').value),
                 t_max: parseFloat(document.getElementById('bojler_Tmax').value),           // ← duże T
                 radiatorT_critical: document.getElementById('radiatorT_critical').checked,
                 radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value)  // ← duże T

@@ -20,7 +20,7 @@ private:
   void handleApiStatus();
   void handleApiConfig();
   void handleApiData();
-  void handleApiSaveConfig();  // NOWA: zapis całej konfiguracji
+  //void handleApiSaveConfig();  // NOWA: zapis całej konfiguracji
   void handleApiSaveWiFi();    // NOWA: zapis WiFi
   void handleApiSaveModbus();  // NOWA: zapis Modbus
   void handleApiSaveHeater();  // NOWA: zapis ustawień grzałek
@@ -42,7 +42,7 @@ private:
   void handleApiVersion();
   void handleApiSimulationGet();
   void handleApiSimulationPost();
-  bool saveUstawienia();
+  //bool saveUstawienia();
   void handleApiHeaterEnable();
   void handleApiHeaterStatus();
   void handleApiTemperatures();  

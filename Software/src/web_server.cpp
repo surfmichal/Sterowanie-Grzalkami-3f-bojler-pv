@@ -180,6 +180,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["u_off"] = U.Ugrid_off;
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
+  doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
   doc["Heater_enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
   doc["bojler_Tmax"] = U.bojlerTmax;
   doc["radiatorT_critical"] = U.radiatorT_critical;
@@ -212,6 +213,7 @@ void WebServerManager::handleApiSaveHeater() {
   U.Ugrid_off = doc["u_off"] | 252.0;
   U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
+  U.ContactorDelay_off_ms = doc["ContactorDelay_off_ms"] | 5000;
   U.bojlerTmax = doc["t_max"] | 75;
   U.radiatorT_critical = doc["radiatorT_critical"] | false;
   U.radiatorTmax = doc["radiatorTmax"] | 60;
@@ -293,7 +295,7 @@ void WebServerManager::handleApiStatus() {
   doc["grzalka2"] = Z.heater2_flag;
   doc["grzalka3"] = Z.heater3_flag;
 
-  doc["contactor"] = stycznik.state;
+  doc["contactorState"] = stycznik.state;
   
   doc["temp_bojler"] = T.bojler.temperatura;
   doc["temp_max"] = U.bojlerTmax;

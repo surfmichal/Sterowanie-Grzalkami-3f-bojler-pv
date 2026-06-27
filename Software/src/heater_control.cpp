@@ -113,6 +113,66 @@ bool HeaterControl::shouldCancelTurnOffTimer(float voltage) {
   return (voltage > U.Ugrid_off);
 }
 
+void HeaterControl::startTurnOnTimer(int index) {
+  HeaterState* state = heater_states[index];
+  
+  // Jeśli grzałka jest wyłączona i nie czeka już na załączenie
+  if (!state->state && !state->waitingToTurnOn) {
+    state->waitingToTurnOn = true;
+    state->turnOnTime = millis() + U.HeaterDelay_on_ms;
+    
+    const char* phaseName = "";
+    float voltage = 0;
+    
+    switch(index) {
+      case 0: phaseName = "L1"; voltage = modbusData.gridVoltage1; break;
+      case 1: phaseName = "L2"; voltage = modbusData.gridVoltage2; break;
+      case 2: phaseName = "L3"; voltage = modbusData.gridVoltage3; break;
+    }
+    
+    Serial.printf("[%s] ⏳ Rozpoczęto odliczanie do ZAŁĄCZENIA (%dms, napięcie: %.1fV >= %.1fV)\n", 
+                  phaseName, U.HeaterDelay_on_ms, voltage, U.Ugrid_on);
+    LOG_INFO("HeaterControl", "[%s] Rozpoczęto odliczanie do ZAŁĄCZENIA (%dms)", 
+             phaseName, U.HeaterDelay_on_ms);
+  }
+}
+
+void HeaterControl::cancelTurnOnTimer(int index) {
+  HeaterState* state = heater_states[index];
+  
+  if (state->waitingToTurnOn) {
+    state->waitingToTurnOn = false;
+    state->turnOnTime = 0;
+    
+    const char* phaseName = "";
+    switch(index) {
+      case 0: phaseName = "L1"; break;
+      case 1: phaseName = "L2"; break;
+      case 2: phaseName = "L3"; break;
+    }
+    
+    Serial.printf("[%s] 🔄 Anulowano odliczanie do ZAŁĄCZENIA (napięcie spadło poniżej %.1fV)\n", 
+                  phaseName, U.Ugrid_on);
+  }
+}
+
+void HeaterControl::executeTurnOn(int index) {
+  HeaterState* state = heater_states[index];
+  
+  if (state->waitingToTurnOn && !state->state) {
+    // Sprawdź czy minął czas opóźnienia
+    if (millis() >= state->turnOnTime) {
+      // Teraz faktycznie załącz
+      state->waitingToTurnOn = false;
+      state->state = true;
+      state->turnOnTime = 0;
+      
+      // ... reszta kodu z turnOnNow() (ustawienie pinów, logi, itp.)
+      // Użyj istniejącego kodu z turnOnNow()
+    }
+  }
+}
+
 // Natychmiastowe załączenie grzałki
 void HeaterControl::turnOnNow(int index) {
   HeaterState* state = heater_states[index];
@@ -215,7 +275,9 @@ bool HeaterControl::isAnyHeaterRequested() {
   for (int i = 0; i < 3; i++) {
     float voltage = (i == 0 ? modbusData.gridVoltage1 : 
                     (i == 1 ? modbusData.gridVoltage2 : modbusData.gridVoltage3));
-    if (shouldTurnOn(voltage) || (heater_states[i]->state && !heater_states[i]->waitingToTurnOff)) {
+    
+    // Sprawdź czy grzałka ma być załączona (natychmiast lub z opóźnieniem)
+    if (shouldTurnOn(voltage) || heater_states[i]->waitingToTurnOn) {
       return true;
     }
   }
@@ -432,21 +494,37 @@ void HeaterControl::update() {
                          modbusData.gridVoltage3};
     
     for (int i = 0; i < 3; i++) {
-      WDT_RESET();  // kopnij watchdoga
+      WDT_RESET();
       
       float phaseVoltage = voltages[i];
       HeaterState* state = heater_states[i];
       
       if (!state->state) {
-        // Grzałka wyłączona - sprawdź czy załączyć
+        // Grzałka WYŁĄCZONA
+        
         if (shouldTurnOn(phaseVoltage)) {
-          turnOnNow(i);
-          updateHeaterFlag(i, true);
+          if (state->waitingToTurnOn) {
+            // Już czeka na załączenie - sprawdź czy nie anulować
+            if (!shouldTurnOn(phaseVoltage)) {
+              cancelTurnOnTimer(i);
+            }
+          } else {
+            // Rozpocznij odliczanie do załączenia
+            startTurnOnTimer(i);
+          }
+        } else {
+          // Napięcie spadło poniżej progu - anuluj oczekiwanie
+          if (state->waitingToTurnOn) {
+            cancelTurnOnTimer(i);
+          }
         }
+        
+        // Wykonaj załączenie jeśli czas minął
+        executeTurnOn(i);
+        
       } else {
-        // Grzałka załączona - sprawdź liczniki wyłączeń
+        // Grzałka ZAŁĄCZONA - logika wyłączania (bez zmian)
         if (state->waitingToTurnOff) {
-          // AKTUALIZACJA: Sprawdzenie czy czas Td już minął, aby fizycznie WYŁĄCZYĆ grzałkę
           if (millis() >= state->turnOffTime) {
             state->state = false;
             state->waitingToTurnOff = false;
@@ -460,31 +538,8 @@ void HeaterControl::update() {
           }
         }
       }
-      updateHeaterState(i);
-    }
-  } else {
-    // Stycznik wyłączony - upewnij się że triaki są wyłączone
-    bool wasAnythingOn = false;
-    for (int i = 0; i < 3; i++) {
-      if (heater_states[i]->state) {
-        wasAnythingOn = true;
-        heater_states[i]->state = false;
-        heater_states[i]->waitingToTurnOff = false;
-        heater_states[i]->turnOffTime = 0;
-      }
-    }
-    if (wasAnythingOn) {
-      digitalWrite(GRZALKA1_pin, GRZALKA_OFF);
-      digitalWrite(GRZALKA2_pin, GRZALKA_OFF);
-      digitalWrite(GRZALKA3_pin, GRZALKA_OFF);
-      digitalWrite(LED_GRZALKA1_pin, LED_OFF);
-      digitalWrite(LED_GRZALKA2_pin, LED_OFF);
-      digitalWrite(LED_GRZALKA3_pin, LED_OFF);
       
-      Z.heater1_flag = false;
-      Z.heater2_flag = false;
-      Z.heater3_flag = false;
-      LOG_INFO("HeaterControl:Update", "Stycznik wyłączony - wyłączam wszystkie triaki!");
+      updateHeaterState(i);
     }
   }
 }

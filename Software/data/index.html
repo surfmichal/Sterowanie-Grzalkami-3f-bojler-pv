@@ -92,26 +92,52 @@
                 </table>
             </div>
                         
-            <!-- KARTA: STEROWANIE GRZAŁKAMI i Temperatura bojlera -->
+            <!-- KARTA: STEROWANIE GRZAŁKAMI -->
             <div class='card'>
                 <h3>🔥 Sterowanie grzałkami
                     <span id='systemStatusText' style='font-size: 14px; font-weight: normal;'></span>
-                </h3>                
-                <div style='margin-bottom: 10px; padding: 8px; background: #fff3e0; border-radius: 5px; text-align: center;'>
-                    <span>🔌 Stycznik główny: </span>
+                </h3>
+                
+                <!-- Stycznik -->
+                 <div style='margin-bottom: 8px; padding: 8px; border-radius: 5px; text-align: center; background: #fff3e0;' id='contactorCard'>
+                    <span>Stycznik główny: </span>
                     <strong id='contactorState'>---</strong>
+                </div>        
+                
+                <!-- Progi i opóźnienia w tabeli -->
+                <div style='margin-bottom: 10px; padding: 8px; background: #f5f5f5; border-radius: 5px;'>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 14px;'>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold; width: 45%;'>⚡ Napięcie załączania (U_on):</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='u_on'>---</span> V</strong></td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>⚡ Napięcie wyłączania (U_off):</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='u_off'>---</span> V</strong></td>
+                        </tr>
+                        <tr style='border-top: 1px solid #ddd;'>
+                            <td style='padding: 4px 8px; font-weight: bold;'>⏱️ Opóźnienie załączania grzałki:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='delay_on'>---</span> ms</strong></td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>⏱️ Opóźnienie wyłączania grzałki:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='delay_off'>---</span> ms</strong></td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>⏱️ Opóźnienie wyłączania stycznika:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='ContactorDelay_off_ms'>---</span> ms</strong></td>
+                        </tr>
+                    </table>
                 </div>
-                <div style='margin-bottom: 10px; padding: 8px; background: #f0f0f0; border-radius: 5px; text-align: center;'>
-                    <span>⚡ Progi napięcia: </span>
-                    <strong>U_on: <span id='u_on'>---</span> V</strong> | 
-                    <strong>U_off: <span id='u_off'>---</span> V</strong> | 
-                    <strong>Opóźnienie: <span id='delay_off'>---</span> ms</strong>
+                
+                <!-- Przyciski grzałek -->
+                <div style='display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;'>
+                    <button id='grzalka1' class='off' style='flex:1; min-width: 80px;'>Grzałka 1 OFF</button>
+                    <button id='grzalka2' class='off' style='flex:1; min-width: 80px;'>Grzałka 2 OFF</button>
+                    <button id='grzalka3' class='off' style='flex:1; min-width: 80px;'>Grzałka 3 OFF</button>
                 </div>
-                <div style='display: flex; gap: 10px; justify-content: center;'>
-                    <button id='grzalka1' class='off' style='flex:1;'>Grzałka 1 OFF</button>
-                    <button id='grzalka2' class='off' style='flex:1;'>Grzałka 2 OFF</button>
-                    <button id='grzalka3' class='off' style='flex:1;'>Grzałka 3 OFF</button>
-                </div>
+                
+                <!-- Status -->
                 <div id='heaterStatus' style='margin-top: 10px; font-size: 12px; text-align: center; color: #666;'></div>
             </div>
 
@@ -229,6 +255,7 @@
     
     <script>
         let heaterSystemEnabled = true;  // przechowuje stan systemu
+        
 
         function fetchModbusData() {
             fetch('/api/data')
@@ -284,6 +311,20 @@
                 })
                 .catch(err => console.error('Błąd fetch Modbus:', err));
         }
+
+        function fetchHeaterConfig() {
+            fetch('/api/heater_config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('u_on').innerHTML = data.u_on?.toFixed(1) || '---';
+                    document.getElementById('u_off').innerHTML = data.u_off?.toFixed(1) || '---';
+                    document.getElementById('delay_on').innerHTML = data.delay_on_ms || '---';
+                    document.getElementById('delay_off').innerHTML = data.delay_off_ms || '---';
+                    document.getElementById('ContactorDelay_off_ms').innerHTML = data.ContactorDelay_off_ms || '---';
+                    document.getElementById('systemStatusText').innerHTML = data.enabled ? '✅ Aktywny' : '⛔ Wyłączony';
+                })
+                .catch(err => console.error('Błąd fetch heater config:', err));
+        }
         
         function fetchSystemStatus() {
             fetch('/api/status')
@@ -300,7 +341,7 @@
                     const compileSpan = document.getElementById('compileDatetime');
                     if (fwVersionSpan) fwVersionSpan.innerHTML = data.firmware_version || '---';
                     if (compileSpan) compileSpan.innerHTML = data.compile_datetime || '---';
-                    
+
                     // Grzałki
                     const g1 = document.getElementById('grzalka1');
                     const g2 = document.getElementById('grzalka2');
@@ -318,12 +359,15 @@
                         g3.innerHTML = data.grzalka3 ? '🔥 Grzałka 3 ON' : '❄️ Grzałka 3 OFF';
                         g3.className = data.grzalka3 ? 'on' : 'off';
                     }
-
+                    
                     // Stan stycznika
                     const contactorSpan = document.getElementById('contactorState');
                     if (contactorSpan) {
-                        contactorSpan.innerHTML = data.contactor ? '🔌 ZAŁĄCZONY' : '⭕ WYŁĄCZONY';
-                        contactorSpan.style.color = data.contactor ? '#4CAF50' : '#666';
+                        const isOn = data.contactorState;
+                        const dot = isOn ? '🟢' : '⚪';
+                        const status = isOn ? 'ZAŁĄCZONY' : 'WYŁĄCZONY';
+                        contactorSpan.innerHTML = `${dot} ${status}`;
+                        contactorSpan.style.color = isOn ? '#4CAF50' : '#666';
                     }
 
                     
@@ -596,8 +640,12 @@
         // Załaduj przy starcie
         loadSimulation();
         loadHeaterStatus();
+        fetchHeaterConfig();
+        fetchSystemStatus();
         updateTemperatures();
         setInterval(updateTemperatures, 5000);
+        setInterval(fetchHeaterConfig, 5000);
+        setInterval(fetchSystemStatus, 5000); 
     </script>
 </body>
 </html>

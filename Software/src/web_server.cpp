@@ -5,9 +5,12 @@
 #include "ntp_manager.h"
 #include "logger.h"
 #include "statistics.h"
+#include "data_manager.h"
+#include "http_data_client.h"
+#include "globals.h"  
 
 // Deklaracje zewnętrzne
-extern ModbusData modbusData;
+extern InverterData inverterData;
 extern ModbusConfig modbusCfg;
 extern Ustawienia U;           // ← GŁÓWNA STRUKTURA KONFIGURACJI
 extern Zmienne Z;
@@ -15,6 +18,15 @@ extern NTPManager ntp;
 extern Logger logger;
 extern LicznikiCzasu liczniki;
 extern TemperatureFIFO tempFIFO;
+extern Temperatury T;              // 
+extern StycznikState stycznik;     // 
+
+// Zmienne symulacji
+extern bool simulationMode;               // 
+extern bool simulationModbusConnected;    // 
+extern float simVoltage1;                 // 
+extern float simVoltage2;                 // 
+extern float simVoltage3;                 // 
 
 // ========== KONSTRUKTOR ==========
 WebServerManager::WebServerManager(ConfigManager* cfg, WiFiManager* wifiMgr) 
@@ -50,6 +62,7 @@ void WebServerManager::begin() {
   server.on("/api/save_logs_config", HTTP_POST, std::bind(&WebServerManager::handleApiSaveLogsConfig, this));
   server.on("/api/heater/enable", HTTP_POST, std::bind(&WebServerManager::handleApiHeaterEnable, this));
   server.on("/api/heater/status", HTTP_GET, std::bind(&WebServerManager::handleApiHeaterStatus, this));
+  server.on("/api/version", HTTP_GET, std::bind(&WebServerManager::handleApiVersion, this));
 
   server.on("/api/simulation", HTTP_GET, std::bind(&WebServerManager::handleApiSimulationGet, this));
   server.on("/api/simulation", HTTP_POST, std::bind(&WebServerManager::handleApiSimulationPost, this));
@@ -232,28 +245,29 @@ void WebServerManager::handleApiSaveHeater() {
 void WebServerManager::handleApiData() {
   DynamicJsonDocument doc(2048);
   
-  // Dane z falownika (Modbus)
-  doc["modbus"]["connected"] = modbusData.connected;
+  // Dane z falownika (Modbus lub HTTP)
+  doc["inverterData"]["mbConnected"] = inverterData.mbConnected;
+  doc["inverterData"]["httpConnected"] = inverterData.httpConnected;
   
-  if (modbusData.connected) {
-    doc["modbus"]["grid"]["v1"] = modbusData.gridVoltage1;
-    doc["modbus"]["grid"]["v2"] = modbusData.gridVoltage2;
-    doc["modbus"]["grid"]["v3"] = modbusData.gridVoltage3;
-    doc["modbus"]["grid"]["a1"] = modbusData.gridCurrent1;
-    doc["modbus"]["grid"]["a2"] = modbusData.gridCurrent2;
-    doc["modbus"]["grid"]["a3"] = modbusData.gridCurrent3;
-    doc["modbus"]["total_power"] = modbusData.power;
-    doc["modbus"]["pv"]["p1_voltage"] = modbusData.pv1_voltage;
-    doc["modbus"]["pv"]["p1_current"] = modbusData.pv1_current;
-    doc["modbus"]["pv"]["p1_power"] = modbusData.pv1_power;
-    doc["modbus"]["pv"]["p2_voltage"] = modbusData.pv2_voltage;
-    doc["modbus"]["pv"]["p2_current"] = modbusData.pv2_current;
-    doc["modbus"]["pv"]["p2_power"] = modbusData.pv2_power;
-    doc["modbus"]["pv"]["total_power"] = modbusData.total_pv_power;
-    doc["modbus"]["temp_inner"] = modbusData.innerTemp;
-    doc["modbus"]["temp_module"] = modbusData.moduleTemp;
-    doc["modbus"]["daily_energy"] = modbusData.dailyEnergy;
-    doc["modbus"]["total_energy"] = modbusData.totalEnergy;
+  if (inverterData.mbConnected || inverterData.httpConnected) {
+    doc["inverterData"]["grid"]["v1"] = inverterData.gridVoltage1;
+    doc["inverterData"]["grid"]["v2"] = inverterData.gridVoltage2;
+    doc["inverterData"]["grid"]["v3"] = inverterData.gridVoltage3;
+    doc["inverterData"]["grid"]["a1"] = inverterData.gridCurrent1;
+    doc["inverterData"]["grid"]["a2"] = inverterData.gridCurrent2;
+    doc["inverterData"]["grid"]["a3"] = inverterData.gridCurrent3;
+    doc["inverterData"]["total_power"] = inverterData.power;
+    doc["inverterData"]["pv"]["p1_voltage"] = inverterData.pv1_voltage;
+    doc["inverterData"]["pv"]["p1_current"] = inverterData.pv1_current;
+    doc["inverterData"]["pv"]["p1_power"] = inverterData.pv1_power;
+    doc["inverterData"]["pv"]["p2_voltage"] = inverterData.pv2_voltage;
+    doc["inverterData"]["pv"]["p2_current"] = inverterData.pv2_current;
+    doc["inverterData"]["pv"]["p2_power"] = inverterData.pv2_power;
+    doc["inverterData"]["pv"]["total_power"] = inverterData.total_pv_power;
+    doc["inverterData"]["temp_inner"] = inverterData.innerTemp;
+    doc["inverterData"]["temp_module"] = inverterData.moduleTemp;
+    doc["inverterData"]["daily_energy"] = inverterData.dailyEnergy;
+    doc["inverterData"]["total_energy"] = inverterData.totalEnergy;
   }
   
   // Konfiguracja Modbus

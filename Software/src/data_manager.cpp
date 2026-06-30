@@ -59,12 +59,12 @@ bool DataManager::fetchData() {
   
   switch (currentSource) {
     case SOURCE_MODBUS:
-      // Modbus działa w tle, dane są w inverterData
-      success = inverterData.mbConnected;
+      success = inverterData.mbConnected;  // Modbus ustawia tę flagę
       break;
       
     case SOURCE_HTTP:
       success = httpClient.fetchDataAsync();
+      // fetchDataAsync() ustawia inverterData.httpConnected
       break;
       
     default:

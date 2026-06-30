@@ -8,44 +8,50 @@ class HeaterControl {
 private:
   HeaterState* heater_states[3];
   
-  bool isTemperatureSafe();
-  bool isModbusDataValid();
-  bool shouldTurnOn(float voltage);                    // Sprawdź czy załączyć
-  bool shouldStartTurnOffTimer(float voltage);         // Sprawdź czy wyłączyć
-  bool shouldCancelTurnOffTimer(float voltage);        // Sprawdź czy anulować wyłączenie
+  bool isTemperatureSafe();       // Sprawdź czy temperatura bojlera i radiatora jest bezpieczna
+  bool isDataValid();             // Sprawdź czy dane są dostępne w zależności od aktywnego źródła
+  bool isModbusDataValid();       // Sprawdź czy dane Modbus są poprawne (napięcia w zakresie)
+  
+  
+  bool shouldTurnOn(float voltage);                   // Sprawdź czy załączyć
+  bool shouldStartTurnOffTimer(float voltage);        // Sprawdź czy wyłączyć
+  bool shouldCancelTurnOffTimer(float voltage);       // Sprawdź czy anulować wyłączenie
    
-  //void startTurnOnTimer(int index);                    // Rozpocznij odliczanie do załączenia
-  //void cancelTurnOnTimer(int index);                   // Anuluj odliczanie do załączenia
-  void turnOnNow(int index);                           // Natychmiastowe załączenie
-  void startTurnOffTimer(int index);                   // Rozpocznij odliczanie do wyłączenia
-  void cancelTurnOffTimer(int index);                  // Anuluj odliczanie do wyłączenia
-  void updateHeaterState(int index);                   // Aktualizacja stanu (sprawdza timery)
-
-  bool isAnyHeaterRequested();    
-  void updateHeaterFlag(int index, bool state);
-  void turnOnContactor();
-  void turnOffContactor();
-  void updateContactor();  
-  bool isAnyHeaterPhysicallyOn();
-  void startTurnOnTimer(int index);
-  void cancelTurnOnTimer(int index);
-  void executeTurnOn(int index);
-  //void setTurnOffDelay(uint16_t Td_ms);
+  void executeTurnOn(int index);                      // Wykonaj załączenie jeśli czas minął
+  
+  bool isAnyHeaterPhysicallyOn();                     // Sprawdź czy którykolwiek triak jest fizycznie załączony
+  bool isAnyHeaterRequested();                        // Sprawdź czy którykolwiek triak powinien być załączony (napięcie >= U_on)
+  
+  void turnOnNow(int index);                          // Natychmiastowe załączenie
+  void turnOffNow(int index);                         // Natychmiastowe wyłączenie
+  
+  void updateHeaterState(int index);                  // Aktualizacja stanu (sprawdza timery)
+  void updateHeaterFlag(int index, bool state);       // Aktualizacja flagi w strukturze Z
+  
+  void turnOnContactor();                             // Załącz stycznik
+  void turnOffContactor();                            // Wyłącz stycznik
+  void updateContactor();                             // Aktualizacja stanu stycznika (odpowiednio do żądań grzałek)
+    
+  void startTurnOffTimer(int index);                  // Rozpocznij odliczanie do wyłączenia
+  void cancelTurnOffTimer(int index);                 // Anuluj odliczanie do wyłączenia
+  
+  void startTurnOnTimer(int index);                   // Rozpocznij odliczanie do załączenia
+  void cancelTurnOnTimer(int index);                  // Anuluj odliczanie do załączenia
   
 public:
   HeaterControl();
-  void begin();
-  void update();  // Główna funkcja sterowania (wywoływana co 1 sekundę)
+  void begin();                                       // Inicjalizacja (przypisanie wskaźników do struktur)
+  void update();                                      // Główna funkcja sterowania (wywoływana co 1 sekundę)
+    
+  void setThresholds(float U_on, float U_off);        // Ustaw progi napięć włączania i wyłączania
+  void setDelays(uint16_t delay_on_ms, uint16_t delay_off_ms);  // Ustaw opóźnienia włączania i wyłączania grzałek
+  void enableSystem(bool enable);                      // Włącz lub wyłącz system grzałek (true=aktywne, false=nieaktywne)
   
-  void setThresholds(float U_on, float U_off);
-  void setDelays(uint16_t delay_on_ms, uint16_t delay_off_ms);
-  void enableSystem(bool enable);
+  bool getHeaterState(int heaterIndex);               // Pobierz stan grzałki (true=załączona, false=wyłączona)
+  int getActiveHeatersCount();                        // Pobierz liczbę aktywnych grzałek (0-3)
   
-  bool getHeaterState(int heaterIndex);
-  int getActiveHeatersCount();
-  //void setBojlerTemperature(float temp);
-  void setModbusStatus(bool connected);
-  void printStatus();
+  void setModbusStatus(bool connected);               // Ustaw status połączenia Modbus (true=połączony, false=rozłączony)
+  void printStatus();                                 // Wypisz aktualny status grzałek i stycznika na Serial
 };
 
 #endif

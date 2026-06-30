@@ -8,13 +8,19 @@ Alarmy      A_byle  = {0};
 Ustawienia  U       = {0};
 WifiConfig  wifi_ust= {0};
 Zmienne     Z       = {0};
+
 APConfig    ap_config   = {0};
-ModbusData   modbusData = {0};
+
+InverterData inverterData = {0};
 ModbusConfig modbusCfg  = {0};
+HttpDataConfig http_data_cfg = {false, "http://192.168.0.251:8080/api/data", 5000, 5000, 3, 1000};
+DataSource activeDataSource = SOURCE_NONE;
+
 HeaterState heater1_state = {false, 0, 0, false, false};
 HeaterState heater2_state = {false, 0, 0, false, false};
 HeaterState heater3_state = {false, 0, 0, false, false};
 StycznikState stycznik = {false, false, 0, false, false};
+
 CzasNTP czasNTP = {0, 0, 0, 0, 0, 0, 0, 0, 0, false};
 LicznikiCzasu liczniki = {0};
 TemperatureFIFO tempFIFO = {{0}, 0, 0, 0};
@@ -23,6 +29,7 @@ Temperatury T = {
   .radiator = {0.0f, false, {0}, "Radiator", 0}
 };
 unsigned long lastHeaterCheckTime = 0;
+
 
 // ========== DEFINICJE STAŁYCH DO SYMULACJI ==========
 bool simulationMode = false;

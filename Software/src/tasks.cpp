@@ -2,7 +2,6 @@
 #include "globals.h"
 #include <Arduino.h>
 #include "wifi_manager.h"
-//#include <OneWire_manager.h>
 #include <DallasTemperature.h>
 #include "heater_control.h"
 #include "logger.h"
@@ -11,6 +10,11 @@
 #include "temperature_fifo.h"
 #include <esp_task_wdt.h>
 #include "onewire_manager.h"
+#include "http_data_client.h"
+#include "data_manager.h"
+
+DataManager dataManager;
+HttpDataClient httpClient;
 
 
 // Handles zadań
@@ -212,13 +216,13 @@ void taskHeaterControl(void* parameter) {
       lastModbusRead = currentTime;
       updateCount++;      
       
-      float v1 = modbusData.gridVoltage1;
-      float v2 = modbusData.gridVoltage2;
-      float v3 = modbusData.gridVoltage3;
+      float v1 = inverterData.gridVoltage1;
+      float v2 = inverterData.gridVoltage2;
+      float v3 = inverterData.gridVoltage3;
       
       float temp = T.bojler.temperatura;
       
-      heaterControl.setModbusStatus(modbusData.connected);
+      heaterControl.setModbusStatus(inverterData.mbConnected);
       
       heaterControl.update();
     }
@@ -227,8 +231,108 @@ void taskHeaterControl(void* parameter) {
     vTaskDelay(pdMS_TO_TICKS(100)); 
   }
 }
+
+// ========== ZADANIE 6: POBIERANIE DANYCH Z HTTP ==========
+void taskHttpDataFetch(void* parameter) {
+  // Inicjalizacja z config.json
+  httpClient.begin();
+  
+  while (true) {
+    WDT_RESET();  // 🔥 kopnij watchdoga
     
-// ========== ZADANIE 6: SYNCHRONIZACJA NTP ==========
+    if (httpClient.isEnabled()) {
+      static unsigned long lastFetch = 0;
+      unsigned long interval = http_data_cfg.interval;
+      
+      if (millis() - lastFetch >= interval) {
+        lastFetch = millis();
+        
+        bool success = httpClient.fetchDataAsync();
+        
+        if (success) {
+          static unsigned long lastPrint = 0;
+          if (millis() - lastPrint > 30000) {
+            lastPrint = millis();
+            Serial.printf("📡 HTTP: L1=%.1fV, L2=%.1fV, L3=%.1fV | Moc=%.0fW\n",
+                          inverterData.gridVoltage1,
+                          inverterData.gridVoltage2,
+                          inverterData.gridVoltage3,
+                          inverterData.power);
+          }
+        } else {
+          // Nie spamuj błędami - tylko co 30 sekund
+          static unsigned long lastErrorPrint = 0;
+          if (millis() - lastErrorPrint > 30000) {
+            lastErrorPrint = millis();
+            Serial.printf("⚠️ HTTP: %s\n", httpClient.getLastError().c_str());
+          }
+        }
+      }
+    } else {
+      // HTTP wyłączone - ustaw modbusData na offline
+      static bool wasOffline = false;
+      if (!wasOffline) {
+        wasOffline = true;
+        inverterData.httpConnected = false;
+        Serial.println("🌐 HTTP Data Client wyłączony - używam Modbus");
+      }
+    }
+    
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+// ========== ZADANIE 6A: POBIERANIE DANYCH  ==========
+void taskDataFetch(void* parameter) {
+  while (WiFi.status() != WL_CONNECTED) {
+    WDT_RESET();
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+  
+  dataManager.begin();
+  
+  unsigned long lastFetch = 0;
+  unsigned long interval = 5000;
+  
+  while (true) {
+    WDT_RESET();
+    
+    // Sprawdź czy źródło się nie zmieniło
+    if (activeDataSource != dataManager.getSource()) {
+      dataManager.begin();  // przełącz na nowe źródło
+    }
+    
+    if (millis() - lastFetch >= interval) {
+      lastFetch = millis();
+      
+      if (activeDataSource != SOURCE_NONE) {
+        bool success = dataManager.fetchData();        
+      
+        if (success) {
+          static unsigned long lastPrint = 0;
+          if (millis() - lastPrint > 30000) {
+            lastPrint = millis();
+            Serial.printf("📡 [%s] L1=%.1fV, L2=%.1fV, L3=%.1fV | Moc=%.0fW\n",
+                          dataManager.getSourceName().c_str(),
+                          inverterData.gridVoltage1,
+                          inverterData.gridVoltage2,
+                          inverterData.gridVoltage3,
+                          inverterData.power);
+          }
+        } else {
+          static unsigned long lastError = 0;
+          if (millis() - lastError > 30000) {
+            lastError = millis();
+            Serial.printf("⚠️ [%s] Brak danych\n", dataManager.getSourceName().c_str());
+          }
+        }
+      }    
+    }
+    
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
+}
+    
+// ========== ZADANIE 7: SYNCHRONIZACJA NTP ==========
 void taskNTPSync(void* parameter) {
   // Czekaj na połączenie WiFi (z watchdogiem)
   while (WiFi.status() != WL_CONNECTED) {
@@ -259,7 +363,7 @@ void taskNTPSync(void* parameter) {
   }
 }
 
-// ========== ZADANIE 7: MONITOR STATYSTYK ==========
+// ========== ZADANIE 8: MONITOR STATYSTYK ==========
 
 void taskStatisticsMonitor(void* parameter) {
   // Odczekaj chwilę na synchronizację NTP (max 30 sekund)
@@ -315,7 +419,7 @@ void taskStatisticsMonitor(void* parameter) {
     vTaskDelay(pdMS_TO_TICKS(1000)); 
   }
 }
-// ========== ZADANIE 8: ZAPIS HISTORII TEMPERATURY CO 2 MINUTY ==========
+// ========== ZADANIE 9: ZAPIS HISTORII TEMPERATURY CO 2 MINUTY ==========
 void taskTemperatureLogger(void* parameter) {
   // Inicjalizacja bufora FIFO
   initTemperatureFIFO();
@@ -402,6 +506,15 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     0
   );
   
+  xTaskCreatePinnedToCore(
+    taskDataFetch,
+    "Data Fetch",
+    8192,
+    NULL,
+    1,
+    NULL,
+    1
+  );
 
   // Zadanie monitora statystyk czasu pracy grzałek (Core 0)
   xTaskCreatePinnedToCore(

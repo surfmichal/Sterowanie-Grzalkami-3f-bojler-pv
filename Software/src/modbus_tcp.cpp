@@ -17,7 +17,7 @@ static WiFiClient modbusClient;
 ModbusManager::ModbusManager() {
   mbClient = nullptr;
   modbusTaskHandle = nullptr;
-  modbusData.connected = false;
+  inverterData.mbConnected = false;
 }
 
 // ========== DESTRUKTOR ==========
@@ -46,57 +46,57 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
     
     // Teraz używaj swapped zamiast values
     if (numValues >= 45) {
-      modbusData.status = swapped[0];
-      modbusData.alarm1 = swapped[1];
-      modbusData.alarm2 = swapped[2];
-      modbusData.alarm3 = swapped[3];
-      modbusData.alarm4 = swapped[4];
-      modbusData.alarm5 = swapped[5];
+      inverterData.status = swapped[0];
+      inverterData.alarm1 = swapped[1];
+      inverterData.alarm2 = swapped[2];
+      inverterData.alarm3 = swapped[3];
+      inverterData.alarm4 = swapped[4];
+      inverterData.alarm5 = swapped[5];
       
-      modbusData.pv1_voltage = swapped[6] / 10.0f;
-      modbusData.pv1_current = swapped[7] / 100.0f;
-      modbusData.pv2_voltage = swapped[8] / 10.0f;
-      modbusData.pv2_current = swapped[9] / 100.0f;
+      inverterData.pv1_voltage = swapped[6] / 10.0f;
+      inverterData.pv1_current = swapped[7] / 100.0f;
+      inverterData.pv2_voltage = swapped[8] / 10.0f;
+      inverterData.pv2_current = swapped[9] / 100.0f;
       
-      modbusData.gridFrequency = swapped[14] / 100.0f;
-      modbusData.gridVoltage1 = swapped[15] / 10.0f;
-      modbusData.gridCurrent1 = swapped[16] / 100.0f;
-      modbusData.gridVoltage2 = swapped[17] / 10.0f;
-      modbusData.gridCurrent2 = swapped[18] / 100.0f;
-      modbusData.gridVoltage3 = swapped[19] / 10.0f;
-      modbusData.gridCurrent3 = swapped[20] / 100.0f;
+      inverterData.gridFrequency = swapped[14] / 100.0f;
+      inverterData.gridVoltage1 = swapped[15] / 10.0f;
+      inverterData.gridCurrent1 = swapped[16] / 100.0f;
+      inverterData.gridVoltage2 = swapped[17] / 10.0f;
+      inverterData.gridCurrent2 = swapped[18] / 100.0f;
+      inverterData.gridVoltage3 = swapped[19] / 10.0f;
+      inverterData.gridCurrent3 = swapped[20] / 100.0f;
       
-      modbusData.pv1_power = modbusData.pv1_voltage * modbusData.pv1_current;
-      modbusData.pv2_power = modbusData.pv2_voltage * modbusData.pv2_current;
-      modbusData.total_pv_power = modbusData.pv1_power + modbusData.pv2_power;
-      modbusData.power = modbusData.total_pv_power;
+      inverterData.pv1_power = inverterData.pv1_voltage * inverterData.pv1_current;
+      inverterData.pv2_power = inverterData.pv2_voltage * inverterData.pv2_current;
+      inverterData.total_pv_power = inverterData.pv1_power + inverterData.pv2_power;
+      inverterData.power = inverterData.total_pv_power;
       
-      modbusData.totalEnergy = (uint32_t)(swapped[21] * 65536 + swapped[22]);
-      modbusData.totalHours = swapped[23] * 65536 + swapped[24];
-      modbusData.dailyEnergy = swapped[25] / 100.0f;
-      modbusData.todayTime = swapped[26];
-      modbusData.moduleTemp = swapped[27];
-      modbusData.innerTemp = swapped[28];
-      modbusData.busVoltage = swapped[29] / 10.0f;
+      inverterData.totalEnergy = (uint32_t)(swapped[21] * 65536 + swapped[22]);
+      inverterData.totalHours = swapped[23] * 65536 + swapped[24];
+      inverterData.dailyEnergy = swapped[25] / 100.0f;
+      inverterData.todayTime = swapped[26];
+      inverterData.moduleTemp = swapped[27];
+      inverterData.innerTemp = swapped[28];
+      inverterData.busVoltage = swapped[29] / 10.0f;
       
-      modbusData.insulationPv1 = swapped[36];
-      modbusData.insulationPv2 = swapped[37];
-      modbusData.insulationToGnd = swapped[38];
-      modbusData.country = swapped[39];
-      modbusData.comPhA = swapped[43];
-      modbusData.comPhB = swapped[44];
-      modbusData.comPhC = swapped[45];
+      inverterData.insulationPv1 = swapped[36];
+      inverterData.insulationPv2 = swapped[37];
+      inverterData.insulationToGnd = swapped[38];
+      inverterData.country = swapped[39];
+      inverterData.comPhA = swapped[43];
+      inverterData.comPhB = swapped[44];
+      inverterData.comPhC = swapped[45];
       
-      modbusData.connected = true;
+      inverterData.mbConnected = true;
       
       // Debug
       static unsigned long lastPrint = 0;
       if (millis() - lastPrint > 30000) {
         Serial.println("\n========== SOFAR MODBUS DATA (Little-Endian) ==========");
-        Serial.printf("Ua: %.1f V\n", modbusData.gridVoltage1);
-        Serial.printf("Ia: %.2f A\n", modbusData.gridCurrent1);
-        Serial.printf("Moc PV: %.0f W\n", modbusData.total_pv_power);
-        Serial.printf("Temp: %d°C\n", modbusData.innerTemp);
+        Serial.printf("Ua: %.1f V\n", inverterData.gridVoltage1);
+        Serial.printf("Ia: %.2f A\n", inverterData.gridCurrent1);
+        Serial.printf("Moc PV: %.0f W\n", inverterData.total_pv_power);
+        Serial.printf("Temp: %d°C\n", inverterData.innerTemp);
         lastPrint = millis();
       }
     }
@@ -107,11 +107,18 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
 void handleModbusError(Error error, uint32_t token) {
   ModbusError me(error);
   Serial.printf("❌ Modbus błąd: %02X - %s\n", (int)me, (const char*)me);
-  modbusData.connected = false;
+  inverterData.mbConnected = false;
 }
 
 // ========== INICJALIZACJA ==========
 bool ModbusManager::begin() {
+  // Sprawdź czy Modbus jest aktywnym źródłem
+  if (activeDataSource != SOURCE_MODBUS) {
+    Serial.println("📡 Modbus: pomijam inicjalizację - inne źródło danych");
+    inverterData.mbConnected = false;
+    return false;
+  }
+    
   if (!modbusCfg.enabled) {
     Serial.println("⚠️ Modbus wyłączony w konfiguracji");
     return false;
@@ -144,7 +151,7 @@ bool ModbusManager::begin() {
   // Uruchom
   mbClient->begin();
   
-  modbusData.connected = true;
+  inverterData.mbConnected = true;
   Serial.println("✅ Modbus TCP: klient uruchomiony");
   
   return true;
@@ -152,7 +159,7 @@ bool ModbusManager::begin() {
 
 // ========== ODCZYT WSZYSTKICH REJESTRÓW ==========
 void ModbusManager::readAllRegisters() {
-  if (!mbClient || !modbusData.connected) return;
+  if (!mbClient || !inverterData.mbConnected) return;
   
   uint8_t unitId = (modbusCfg.unitId > 0) ? modbusCfg.unitId : DEFAULT_UNIT_ID;
   
@@ -161,7 +168,7 @@ void ModbusManager::readAllRegisters() {
   if (err != SUCCESS) {
     ModbusError me(err);
     Serial.printf("❌ Modbus błąd żądania: %02X - %s\n", (int)me, (const char*)me);
-    modbusData.connected = false;
+    inverterData.mbConnected = false;
   }
 }
 
@@ -172,6 +179,12 @@ void ModbusManager::update() {
 
 // ========== URUCHOMIENIE TASKA ==========
 void ModbusManager::startPeriodicRead() {
+  // Uruchom tylko jeśli Modbus jest aktywnym źródłem
+  if (activeDataSource != SOURCE_MODBUS) {
+    Serial.println("📡 Modbus: nieuruchamiam - inne źródło danych aktywne");
+    return;
+  }
+  
   xTaskCreatePinnedToCore(
     taskModbus,
     "Modbus Task",
@@ -181,47 +194,54 @@ void ModbusManager::startPeriodicRead() {
     &modbusTaskHandle,
     0
   );
+  
+  Serial.println("📡 Modbus: task uruchomiony");
 }
 
-// ========== TASK FreeRTOS ==========
-/*
+
 void ModbusManager::taskModbus(void* parameter) {
   ModbusManager* manager = (ModbusManager*)parameter;
-  uint16_t readInterval = (modbusCfg.readInterval > 0) ? modbusCfg.readInterval : 5000;
   
-  while (true) {
-    if (modbusCfg.enabled && manager->mbClient) {
-      manager->readAllRegisters();
-    }
-    vTaskDelay(readInterval / portTICK_PERIOD_MS);
+   // SPRAWDŹ CZY MODBUS JEST AKTYWNYM ŹRÓDŁEM
+  if (activeDataSource != SOURCE_MODBUS) {
+    Serial.println("📡 Modbus: źródło nieaktywne - task kończy pracę");
+    vTaskDelete(NULL);
+    return;
   }
-}
-*/
 
-void ModbusManager::taskModbus(void* parameter) {
-  ModbusManager* manager = (ModbusManager*)parameter;
-  
+  uint16_t readInterval = (modbusCfg.readInterval > 0) ? modbusCfg.readInterval : 5000;
+
   while (true) {
     if (simulationMode) {
       // 🔥 TRYB SYMULACJI
-      modbusData.connected = simulationModbusConnected;  // 
-      modbusData.gridVoltage1 = simVoltage1;
-      modbusData.gridVoltage2 = simVoltage2;
-      modbusData.gridVoltage3 = simVoltage3;
-      modbusData.gridCurrent1 = 5.2;
-      modbusData.gridCurrent2 = 4.8;
-      modbusData.gridCurrent3 = 5.0;
-      modbusData.total_pv_power = 3500;
-      modbusData.innerTemp = 45;
+      inverterData.mbConnected  = simulationModbusConnected;  // 
+      inverterData.gridVoltage1 = simVoltage1;
+      inverterData.gridVoltage2 = simVoltage2;
+      inverterData.gridVoltage3 = simVoltage3;
+      inverterData.gridCurrent1 = 5.2;
+      inverterData.gridCurrent2 = 4.8;
+      inverterData.gridCurrent3 = 5.0;
+      inverterData.total_pv_power = 3500;
+      inverterData.innerTemp = 45;
       
       static unsigned long lastSimLog = 0;
       if (millis() - lastSimLog > 10000) {
         Serial.printf("🔧 SYMULACJA: %s | L1=%.1fV, L2=%.1fV, L3=%.1fV\n", 
-                      modbusData.connected ? "Online" : "Offline",
+                      inverterData.mbConnected  ? "Online" : "Offline",
                       simVoltage1, simVoltage2, simVoltage3);
         lastSimLog = millis();
       }
-    } else {
+
+    
+    } else if (activeDataSource != SOURCE_MODBUS) {
+      // Sprawdź czy nadal jesteśmy aktywnym źródłem
+      Serial.println("📡 Modbus: przełączono na inne źródło - kończę pracę");
+      manager->mbClient->setTimeout(0, 0);  // zakończ połączenie
+      vTaskDelete(NULL);
+      return;
+    
+    
+    } else    {
       // Normalny odczyt
       if (modbusCfg.enabled && manager->mbClient) {
         manager->readAllRegisters();

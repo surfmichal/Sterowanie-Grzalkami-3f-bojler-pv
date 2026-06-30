@@ -6,7 +6,7 @@
 
 extern StycznikState stycznik;
 extern Zmienne Z;
-extern ModbusData modbusData;
+extern InverterData inverterData;
 
 HeaterControl::HeaterControl() {
   heater_states[0] = &heater1_state;

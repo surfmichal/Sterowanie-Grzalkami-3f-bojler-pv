@@ -115,7 +115,7 @@ struct HeaterState {
   bool waitingToTurnOff;      // Czy czeka na wyłączenie  
 };
 
-struct ModbusData {
+struct InverterData {
   // Podstawowe parametry falownika
   uint16_t status;           // ST - status pracy
   uint16_t alarm1;           // AL1
@@ -165,7 +165,9 @@ struct ModbusData {
   uint16_t comPhC;           // Com_Ph_C
   
   float power;               // Obliczona moc chwilowa (W)
-  bool connected;            // Czy falownik odpowiada
+  bool mbConnected;          // Flaga połączenia Modbus (true=połączono)
+  bool httpConnected;        // Flaga połączenia (true=połączono)
+  unsigned long timestamp;   // Czas ostatniego odczytu (millis)
 };
 
 
@@ -175,6 +177,24 @@ struct ModbusConfig {
   uint8_t unitId;          // ID urządzenia (domyślnie 255 dla Sofar)
   uint16_t readInterval;   // Interwał odczytu (ms)
   bool enabled;            // Czy Modbus jest aktywny
+};
+
+// ========== KONFIGURACJA HTTP DATA ==========
+struct HttpDataConfig {
+  bool enabled;
+  char addr[100];
+  uint16_t interval;      // ms
+  uint16_t timeout;       // ms
+  uint8_t max_retries;
+  uint16_t retry_delay;   // ms
+};
+
+
+// ========== ŹRÓDŁO DANYCH ==========
+enum DataSource : uint8_t {
+  SOURCE_MODBUS = 0,
+  SOURCE_HTTP = 1,
+  SOURCE_NONE = 2
 };
 
 /// ========== LICZNIKI CZASU PRACY ==========
@@ -226,6 +246,7 @@ struct TemperatureFIFO {
 };
 
 
+
 // ========== STRUKTURA DLA CZUJNIKA TEMPERATURY ==========
 struct CzujnikTemp {
   float temperatura;
@@ -264,9 +285,14 @@ extern Bledy       E_teraz;
 extern Bledy       E_byle;
 extern Alarmy      A_teraz;
 extern Alarmy      A_byle;
+
 extern WifiConfig  wifi_ust;
-extern ModbusData  modbusData;
+
+extern InverterData inverterData; 
 extern ModbusConfig modbusCfg;
+extern HttpDataConfig http_data_cfg;
+extern DataSource activeDataSource; 
+
 extern APConfig    ap_config;
 extern Ustawienia  U;
 extern Zmienne     Z;
@@ -277,6 +303,7 @@ extern HeaterState heater3_state;
 extern CzasNTP czasNTP;
 extern StycznikState stycznik;
 extern TemperatureFIFO tempFIFO;
+
 
 // ========== ZMIENNE POMOCNICZE ==========
 extern unsigned long currentTime;

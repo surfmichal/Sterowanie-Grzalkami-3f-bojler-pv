@@ -88,17 +88,82 @@ bool ConfigManager::loadMainConfig() {
   // Odczyt active
   wifiConfig.active = wifi["active"] | true;
   
+  
+  // ===== SEKCJA WCZYTYWANIA USTAWIENIA =====
+  JsonObject Ustawienia = doc["Ustawienia"];
+  if (Ustawienia) {
+    // Sekcja istnieje - odczytaj wartości
+    U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
+    U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
+    U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
+    U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
+    U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
+    U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
+    U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
+    U.radiatorTmax = Ustawienia["radiatorTmax"] | 60.0;
+    U.radiatorT_critical = Ustawienia["radiatorT_critical"] | true;
+    
+    Serial.println("✅ Odczytano ustawienia z sekcji 'Ustawienia':");
+    Serial.printf("   HeaterEnabled: %s\n", U.HeaterEnabled ? "true" : "false");
+    Serial.printf("   Ugrid_on: %.1f V\n", U.Ugrid_on);
+    Serial.printf("   Ugrid_off: %.1f V\n", U.Ugrid_off);
+    Serial.printf("   HeaterDelay_on_ms: %d ms\n", U.HeaterDelay_on_ms);
+    Serial.printf("   HeaterDelay_off_ms: %d ms\n", U.HeaterDelay_off_ms);
+    Serial.printf("   ContactorDelay_off_ms: %d ms\n", U.ContactorDelay_off_ms);
+    Serial.printf("   bojlerTmax: %.1f °C\n", U.bojlerTmax);
+    Serial.printf("   radiatorTmax: %.1f °C\n", U.radiatorTmax);
+    Serial.printf("   radiatorT_critical: %s\n", U.radiatorT_critical ? "true" : "false");
+  } else {
+    // Sekcja nie istnieje - użyj domyślnych
+    Serial.println("⚠️ Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
+    U.HeaterEnabled = true;
+    U.Ugrid_on = 253.0;
+    U.Ugrid_off = 250.0;
+    U.HeaterDelay_on_ms = 1000;
+    U.HeaterDelay_off_ms = 5000;
+    U.ContactorDelay_off_ms = 5000;
+    U.bojlerTmax = 80.0;
+    U.radiatorT_critical = true;
+    U.radiatorTmax = 60.0;
+  }
+
+  // ===== SEKCJA ŹRÓDŁA DANYCH =====
+  JsonObject dataSource = doc["data_source"];
+  String source = dataSource["source"] | "modbus";  // domyślnie modbus
+
+  if (source == "http") {
+    activeDataSource = SOURCE_HTTP;
+    Serial.println("📡 Źródło danych: HTTP");
+  } else if (source == "modbus") {
+    activeDataSource = SOURCE_MODBUS;
+    Serial.println("📡 Źródło danych: Modbus TCP");
+  } else {
+    activeDataSource = SOURCE_NONE;
+    Serial.println("📡 Źródło danych: BRAK");
+  }
+
+  // ===== SEKCJA HTTP DATA (DODAJ) =====
+  JsonObject httpData = doc["http_data"];  
+  strlcpy(http_data_cfg.addr, httpData["addr"] | "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
+  http_data_cfg.interval = httpData["interval"] | 5000;
+  http_data_cfg.timeout = httpData["timeout"] | 5000;
+  http_data_cfg.max_retries = httpData["max_retries"] | 3;
+  http_data_cfg.retry_delay = httpData["retry_delay"] | 1000;
+
+  Serial.println("📋 Odczytano konfigurację HTTP Data:");
+  Serial.printf("   addr: %s\n", http_data_cfg.addr);
+  Serial.printf("   interval: %d ms\n", http_data_cfg.interval);
+  Serial.printf("   timeout: %d ms\n", http_data_cfg.timeout);
+
   // ========== ODCZYT KONFIGURACJI MODBUS ==========
   JsonObject modbus = doc["modbus"];
   if (modbus) {
     strlcpy(modbusCfg.ip, modbus["ip"] | "", sizeof(modbusCfg.ip));
     modbusCfg.port = modbus["port"] | 502;
     modbusCfg.unitId = modbus["unitId"] | 1;
-    modbusCfg.readInterval = modbus["readInterval"] | 5000;
-    modbusCfg.enabled = modbus["enabled"] | false;
+    modbusCfg.readInterval = modbus["readInterval"] | 5000;    
  
-    Serial.println("📋 Odczytano konfigurację Modbus z config.json:");
-    Serial.printf("   enabled: %s\n", modbusCfg.enabled ? "true" : "false");
+    Serial.println("📋 Odczytano konfigurację Modbus z config.json:");    
     Serial.printf("   ip: %s\n", modbusCfg.ip);
     Serial.printf("   port: %d\n", modbusCfg.port);
     Serial.printf("   unitId: %d\n", modbusCfg.unitId);
@@ -113,45 +178,6 @@ bool ConfigManager::loadMainConfig() {
     modbusCfg.enabled = false;
   }
 
-  // ===== SEKCJA WCZYTYWANIA USTAWIENIA =====
-JsonObject Ustawienia = doc["Ustawienia"];
-if (Ustawienia) {
-  // Sekcja istnieje - odczytaj wartości
-  U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
-  U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
-  U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
-  U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
-  U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
-  U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
-  U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
-  U.radiatorTmax = Ustawienia["radiatorTmax"] | 60.0;
-  U.radiatorT_critical = Ustawienia["radiatorT_critical"] | true;
-  
-  Serial.println("✅ Odczytano ustawienia z sekcji 'Ustawienia':");
-  Serial.printf("   HeaterEnabled: %s\n", U.HeaterEnabled ? "true" : "false");
-  Serial.printf("   Ugrid_on: %.1f V\n", U.Ugrid_on);
-  Serial.printf("   Ugrid_off: %.1f V\n", U.Ugrid_off);
-  Serial.printf("   HeaterDelay_on_ms: %d ms\n", U.HeaterDelay_on_ms);
-  Serial.printf("   HeaterDelay_off_ms: %d ms\n", U.HeaterDelay_off_ms);
-  Serial.printf("   ContactorDelay_off_ms: %d ms\n", U.ContactorDelay_off_ms);
-  Serial.printf("   bojlerTmax: %.1f °C\n", U.bojlerTmax);
-  Serial.printf("   radiatorTmax: %.1f °C\n", U.radiatorTmax);
-  Serial.printf("   radiatorT_critical: %s\n", U.radiatorT_critical ? "true" : "false");
-} else {
-  // Sekcja nie istnieje - użyj domyślnych
-  Serial.println("⚠️ Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
-  U.HeaterEnabled = true;
-  U.Ugrid_on = 253.0;
-  U.Ugrid_off = 250.0;
-  U.HeaterDelay_on_ms = 1000;
-  U.HeaterDelay_off_ms = 5000;
-  U.ContactorDelay_off_ms = 5000;
-  U.bojlerTmax = 80.0;
-  U.radiatorT_critical = true;
-  U.radiatorTmax = 60.0;
-}
-
-  
   return true;
 }
 

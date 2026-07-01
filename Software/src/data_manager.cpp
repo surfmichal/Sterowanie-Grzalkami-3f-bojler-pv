@@ -17,21 +17,18 @@ DataManager::DataManager() {
 void DataManager::begin() {
   currentSource = activeDataSource;
   
-  // Zatrzymaj poprzednie źródło
   stopCurrentSource();
   
-  // Uruchom nowe źródło
   switch (currentSource) {
     case SOURCE_MODBUS:
-      // Modbus sam uruchomi task w startPeriodicRead()
       modbus.begin();
       modbus.startPeriodicRead();
       Serial.println("📡 DataManager: Modbus TCP aktywny");
       break;
       
     case SOURCE_HTTP:
-      httpClient.begin();
-      // HTTP działa w taskDataFetch
+      // Bez parametru enabled!
+      httpClient.begin();  // używa http_data_cfg
       Serial.println("📡 DataManager: HTTP Data aktywny");
       break;
       
@@ -59,18 +56,19 @@ bool DataManager::fetchData() {
   
   switch (currentSource) {
     case SOURCE_MODBUS:
-      success = inverterData.mbConnected;  // Modbus ustawia tę flagę
+      success = inverterData.connected;
       break;
       
     case SOURCE_HTTP:
       success = httpClient.fetchDataAsync();
-      // fetchDataAsync() ustawia inverterData.httpConnected
       break;
       
     default:
       success = false;
       break;
   }
+    
+  inverterData.connected = success;
   
   if (success) {
     lastUpdate = millis();

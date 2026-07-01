@@ -246,10 +246,10 @@ void WebServerManager::handleApiData() {
   DynamicJsonDocument doc(2048);
   
   // Dane z falownika (Modbus lub HTTP)
-  doc["inverterData"]["mbConnected"] = inverterData.mbConnected;
-  doc["inverterData"]["httpConnected"] = inverterData.httpConnected;
+  doc["inverterData"]["connected"] = inverterData.connected;
   
-  if (inverterData.mbConnected || inverterData.httpConnected) {
+  
+  if (inverterData.connected) {
     doc["inverterData"]["grid"]["v1"] = inverterData.gridVoltage1;
     doc["inverterData"]["grid"]["v2"] = inverterData.gridVoltage2;
     doc["inverterData"]["grid"]["v3"] = inverterData.gridVoltage3;

@@ -43,6 +43,12 @@ unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 const long timeoutTime = 5000;  // 5 sekund timeout
 
+
+// ========== MUTEXY ==========
+SemaphoreHandle_t xMutexInverterData = NULL;
+SemaphoreHandle_t xMutexTemperature  = NULL;
+SemaphoreHandle_t xMutexLiczniki     = NULL;
+
 // ========== DATA KOMPILACJI (automatycznie z kompilatora) ==========
 const char* COMPILE_DATE = __DATE__;      // "Mmm DD YYYY"
 const char* COMPILE_TIME = __TIME__;      // "HH:MM:SS"

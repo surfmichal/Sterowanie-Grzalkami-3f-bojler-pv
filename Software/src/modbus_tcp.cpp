@@ -17,7 +17,7 @@ static WiFiClient modbusClient;
 ModbusManager::ModbusManager() {
   mbClient = nullptr;
   modbusTaskHandle = nullptr;
-  inverterData.mbConnected = false;
+  inverterData.connected = false;
 }
 
 // ========== DESTRUKTOR ==========
@@ -87,7 +87,7 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
       inverterData.comPhB = swapped[44];
       inverterData.comPhC = swapped[45];
       
-      inverterData.mbConnected = true;
+      inverterData.connected = true;
       
       // Debug
       static unsigned long lastPrint = 0;
@@ -107,7 +107,7 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
 void handleModbusError(Error error, uint32_t token) {
   ModbusError me(error);
   Serial.printf("❌ Modbus błąd: %02X - %s\n", (int)me, (const char*)me);
-  inverterData.mbConnected = false;
+  inverterData.connected = false;
 }
 
 // ========== INICJALIZACJA ==========
@@ -115,7 +115,7 @@ bool ModbusManager::begin() {
   // Sprawdź czy Modbus jest aktywnym źródłem
   if (activeDataSource != SOURCE_MODBUS) {
     Serial.println("📡 Modbus: pomijam inicjalizację - inne źródło danych");
-    inverterData.mbConnected = false;
+    inverterData.connected = false;
     return false;
   }
     
@@ -151,7 +151,7 @@ bool ModbusManager::begin() {
   // Uruchom
   mbClient->begin();
   
-  inverterData.mbConnected = true;
+  inverterData.connected = true;
   Serial.println("✅ Modbus TCP: klient uruchomiony");
   
   return true;
@@ -159,7 +159,7 @@ bool ModbusManager::begin() {
 
 // ========== ODCZYT WSZYSTKICH REJESTRÓW ==========
 void ModbusManager::readAllRegisters() {
-  if (!mbClient || !inverterData.mbConnected) return;
+  if (!mbClient || !inverterData.connected) return;
   
   uint8_t unitId = (modbusCfg.unitId > 0) ? modbusCfg.unitId : DEFAULT_UNIT_ID;
   
@@ -168,7 +168,7 @@ void ModbusManager::readAllRegisters() {
   if (err != SUCCESS) {
     ModbusError me(err);
     Serial.printf("❌ Modbus błąd żądania: %02X - %s\n", (int)me, (const char*)me);
-    inverterData.mbConnected = false;
+    inverterData.connected = false;
   }
 }
 
@@ -214,7 +214,7 @@ void ModbusManager::taskModbus(void* parameter) {
   while (true) {
     if (simulationMode) {
       // 🔥 TRYB SYMULACJI
-      inverterData.mbConnected  = simulationModbusConnected;  // 
+      inverterData.connected  = simulationModbusConnected;  // 
       inverterData.gridVoltage1 = simVoltage1;
       inverterData.gridVoltage2 = simVoltage2;
       inverterData.gridVoltage3 = simVoltage3;
@@ -227,7 +227,7 @@ void ModbusManager::taskModbus(void* parameter) {
       static unsigned long lastSimLog = 0;
       if (millis() - lastSimLog > 10000) {
         Serial.printf("🔧 SYMULACJA: %s | L1=%.1fV, L2=%.1fV, L3=%.1fV\n", 
-                      inverterData.mbConnected  ? "Online" : "Offline",
+                      inverterData.connected  ? "Online" : "Offline",
                       simVoltage1, simVoltage2, simVoltage3);
         lastSimLog = millis();
       }

@@ -106,6 +106,18 @@ void setup() {
   Serial.println("================================\n");
 
   
+  // ===== INICJALIZACJA MUTEXÓW (przed zadaniami!) =====
+  xMutexInverterData = xSemaphoreCreateMutex();
+  xMutexTemperature  = xSemaphoreCreateMutex();
+  xMutexLiczniki     = xSemaphoreCreateMutex();
+  
+  if (!xMutexInverterData || !xMutexTemperature || !xMutexLiczniki) {
+    Serial.println("❌ BŁĄD: Nie można utworzyć mutexów!");
+    // Bez mutexów system nie powinien startować
+    ESP.restart();
+  }
+  Serial.println("✅ Mutexy zainicjalizowane");
+
   // ===== URUCHOMIENIE ZADAŃ FreeRTOS =====
   setupTasks(&wifi, &config);
   

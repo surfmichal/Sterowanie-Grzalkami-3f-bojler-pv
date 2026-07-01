@@ -156,15 +156,16 @@ void taskTemperature(void* parameter) {
       float temp = sensorBojler.readTemperature(0); // Odczyt z indeksu 0
       
       if (temp != DEVICE_DISCONNECTED_C && temp > -55.0f && temp < 125.0f) {
+        xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
         T.bojler.temperatura = temp;        
         T.bojler.ok = true;
+        xSemaphoreGive(xMutexTemperature);
       } else {
+        xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
         T.bojler.ok = false;
-        T.bojler.temperatura = DEVICE_DISCONNECTED_C; // Wpisujemy błąd przy awarii w locie
-      }      
-    } else {
-      T.bojler.ok = false;
-      T.bojler.temperatura = DEVICE_DISCONNECTED_C;
+        T.bojler.temperatura = DEVICE_DISCONNECTED_C;
+        xSemaphoreGive(xMutexTemperature);
+      }
     }
     
     // === CZUJNIK RADIATORA ===
@@ -173,11 +174,15 @@ void taskTemperature(void* parameter) {
       float temp = sensorRadiator.readTemperature(0);
       
       if (temp != DEVICE_DISCONNECTED_C && temp > -55.0f && temp < 125.0f) {
+        xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
         T.radiator.temperatura = temp;
         T.radiator.ok = true;
+        xSemaphoreGive(xMutexTemperature);
       } else {
+        xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
         T.radiator.ok = false;
         T.radiator.temperatura = DEVICE_DISCONNECTED_C;
+        xSemaphoreGive(xMutexTemperature);
       }
     } else {
       T.radiator.ok = false;
@@ -216,13 +221,14 @@ void taskHeaterControl(void* parameter) {
       lastModbusRead = currentTime;
       updateCount++;      
       
+      xSemaphoreTake(xMutexInverterData, portMAX_DELAY);
       float v1 = inverterData.gridVoltage1;
       float v2 = inverterData.gridVoltage2;
       float v3 = inverterData.gridVoltage3;
-      
-      float temp = T.bojler.temperatura;
-      
-      heaterControl.setModbusStatus(inverterData.mbConnected);
+      bool connected = inverterData.connected;  // ← jedna flaga dla obu źródeł
+      xSemaphoreGive(xMutexInverterData);
+
+      heaterControl.setDataStatus(connected); 
       
       heaterControl.update();
     }
@@ -232,56 +238,7 @@ void taskHeaterControl(void* parameter) {
   }
 }
 
-// ========== ZADANIE 6: POBIERANIE DANYCH Z HTTP ==========
-void taskHttpDataFetch(void* parameter) {
-  // Inicjalizacja z config.json
-  httpClient.begin();
-  
-  while (true) {
-    WDT_RESET();  // 🔥 kopnij watchdoga
-    
-    if (httpClient.isEnabled()) {
-      static unsigned long lastFetch = 0;
-      unsigned long interval = http_data_cfg.interval;
-      
-      if (millis() - lastFetch >= interval) {
-        lastFetch = millis();
-        
-        bool success = httpClient.fetchDataAsync();
-        
-        if (success) {
-          static unsigned long lastPrint = 0;
-          if (millis() - lastPrint > 30000) {
-            lastPrint = millis();
-            Serial.printf("📡 HTTP: L1=%.1fV, L2=%.1fV, L3=%.1fV | Moc=%.0fW\n",
-                          inverterData.gridVoltage1,
-                          inverterData.gridVoltage2,
-                          inverterData.gridVoltage3,
-                          inverterData.power);
-          }
-        } else {
-          // Nie spamuj błędami - tylko co 30 sekund
-          static unsigned long lastErrorPrint = 0;
-          if (millis() - lastErrorPrint > 30000) {
-            lastErrorPrint = millis();
-            Serial.printf("⚠️ HTTP: %s\n", httpClient.getLastError().c_str());
-          }
-        }
-      }
-    } else {
-      // HTTP wyłączone - ustaw modbusData na offline
-      static bool wasOffline = false;
-      if (!wasOffline) {
-        wasOffline = true;
-        inverterData.httpConnected = false;
-        Serial.println("🌐 HTTP Data Client wyłączony - używam Modbus");
-      }
-    }
-    
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
-}
-// ========== ZADANIE 6A: POBIERANIE DANYCH  ==========
+// ========== ZADANIE 6: POBIERANIE DANYCH  ==========
 void taskDataFetch(void* parameter) {
   while (WiFi.status() != WL_CONNECTED) {
     WDT_RESET();
@@ -328,7 +285,8 @@ void taskDataFetch(void* parameter) {
       }    
     }
     
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    //vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
     
@@ -436,7 +394,9 @@ void taskTemperatureLogger(void* parameter) {
       lastLogTime = now;
       
       // Pobierz aktualną temperaturę (z zadania temperature)
+      xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
       int8_t temp = (int8_t)T.bojler.temperatura;
+      xSemaphoreGive(xMutexTemperature);
       
       // Dodaj do bufora FIFO
       addTemperatureReading(temp);

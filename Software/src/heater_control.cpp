@@ -50,9 +50,9 @@ bool HeaterControl::isDataValid() {
   // Sprawdź czy dane są dostępne w zależności od aktywnego źródła
   switch (activeDataSource) {
     case SOURCE_MODBUS:
-      return inverterData.mbConnected;
+      return inverterData.connected;
     case SOURCE_HTTP:
-      return inverterData.httpConnected;
+      return inverterData.connected;
     case SOURCE_NONE:
     default:
       return false;
@@ -580,14 +580,14 @@ int HeaterControl::getActiveHeatersCount() {
   return count;
 }
 
-void HeaterControl::setModbusStatus(bool connected) {
+void HeaterControl::setDataStatus(bool connected) {
   // Ustaw odpowiednią flagę w zależności od aktywnego źródła
   switch (activeDataSource) {
     case SOURCE_MODBUS:
-      inverterData.mbConnected = connected;
+      inverterData.connected = connected;
       break;
     case SOURCE_HTTP:
-      inverterData.httpConnected = connected;
+      inverterData.connected = connected;
       break;
     default:
       break;
@@ -610,6 +610,5 @@ void HeaterControl::printStatus() {
                 T.bojler.temperatura, U.bojlerTmax,
                 activeDataSource == SOURCE_MODBUS ? "Modbus" : 
                   (activeDataSource == SOURCE_HTTP ? "HTTP" : "BRAK"),
-                inverterData.mbConnected ? "OK" : "BRAK",
-                inverterData.httpConnected ? "OK" : "BRAK");
+                inverterData.connected ? "OK" : "BRAK");
 }

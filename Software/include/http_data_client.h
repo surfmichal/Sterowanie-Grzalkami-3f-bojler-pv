@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "globals.h"
 
 struct HttpData {
   float gridVoltage1;
@@ -37,16 +38,16 @@ private:
   unsigned long timeout;
   uint8_t maxRetries;
   unsigned long retryDelay;
-  bool enabled;
+  //bool enabled;
   String lastError;
+  int consecutiveFailures;
   
   bool parseResponse(String json, HttpData& data);
   
 public:
   HttpDataClient();
   
-  void begin(bool enabled, const String& url, 
-             unsigned long interval, unsigned long timeout,
+  void begin(const String& url, unsigned long interval, unsigned long timeout,
              uint8_t maxRetries, unsigned long retryDelay);
   void begin();  // z domyślnymi z config.json
   
@@ -58,7 +59,8 @@ public:
   bool fetchDataAsync();  // zapisuje do globalnej modbusData
   
   String getLastError();
-  bool isEnabled() { return enabled; }
+  int getConsecutiveFailures(); 
+  bool isEnabled() { return (activeDataSource == SOURCE_HTTP); } 
 };
 
 #endif

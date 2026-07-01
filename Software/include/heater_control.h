@@ -50,7 +50,7 @@ public:
   bool getHeaterState(int heaterIndex);               // Pobierz stan grzałki (true=załączona, false=wyłączona)
   int getActiveHeatersCount();                        // Pobierz liczbę aktywnych grzałek (0-3)
   
-  void setModbusStatus(bool connected);               // Ustaw status połączenia Modbus (true=połączony, false=rozłączony)
+  void setDataStatus(bool connected);                 // Ustaw status połączenia danych (true=połączony, false=rozłączony)
   void printStatus();                                 // Wypisz aktualny status grzałek i stycznika na Serial
 };
 

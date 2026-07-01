@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <esp_task_wdt.h>
+#include "freertos/semphr.h"
 
 // ========== STEROWANIE (odwrócona logika) ==========
 #define ON  LOW      // LOW = załączone (aktywne)
@@ -165,8 +166,9 @@ struct InverterData {
   uint16_t comPhC;           // Com_Ph_C
   
   float power;               // Obliczona moc chwilowa (W)
-  bool mbConnected;          // Flaga połączenia Modbus (true=połączono)
-  bool httpConnected;        // Flaga połączenia (true=połączono)
+  //bool mbConnected;          // Flaga połączenia Modbus (true=połączono)
+  //bool httpConnected;        // Flaga połączenia (true=połączono)
+  bool connected;            // Flaga połączenia (true=połączono)
   unsigned long timestamp;   // Czas ostatniego odczytu (millis)
 };
 
@@ -304,6 +306,11 @@ extern CzasNTP czasNTP;
 extern StycznikState stycznik;
 extern TemperatureFIFO tempFIFO;
 
+// ========== MUTEXY WSPÓŁDZIELONYCH DANYCH ==========
+extern SemaphoreHandle_t xMutexInverterData;  // chroni inverterData
+extern SemaphoreHandle_t xMutexTemperature;   // chroni T (bojler, radiator)
+extern SemaphoreHandle_t xMutexLiczniki;      // chroni liczniki
+
 
 // ========== ZMIENNE POMOCNICZE ==========
 extern unsigned long currentTime;
@@ -335,6 +342,8 @@ inline void copyChars(const char *source, char *destination, int length) {
     destination[i] = source[i];  
   }
 }
+
+
 
 // ========== WERSJA OPROGRAMOWANIA ==========
 #define FIRMWARE_VERSION "1.0.0"  // Główna wersja

@@ -144,16 +144,26 @@ bool ConfigManager::loadMainConfig() {
 
   // ===== SEKCJA HTTP DATA (DODAJ) =====
   JsonObject httpData = doc["http_data"];  
-  strlcpy(http_data_cfg.addr, httpData["addr"] | "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
-  http_data_cfg.interval = httpData["interval"] | 5000;
-  http_data_cfg.timeout = httpData["timeout"] | 5000;
-  http_data_cfg.max_retries = httpData["max_retries"] | 3;
-  http_data_cfg.retry_delay = httpData["retry_delay"] | 1000;
+  if (httpData) {
+    strlcpy(http_data_cfg.addr, httpData["addr"] | "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
+    http_data_cfg.interval = httpData["interval"] | 5000;
+    http_data_cfg.timeout = httpData["timeout"] | 5000;
+    http_data_cfg.max_retries = httpData["max_retries"] | 3;
+    http_data_cfg.retry_delay = httpData["retry_delay"] | 1000;
 
-  Serial.println("📋 Odczytano konfigurację HTTP Data:");
-  Serial.printf("   addr: %s\n", http_data_cfg.addr);
-  Serial.printf("   interval: %d ms\n", http_data_cfg.interval);
-  Serial.printf("   timeout: %d ms\n", http_data_cfg.timeout);
+    Serial.println("📋 Odczytano konfigurację HTTP Data:");
+    Serial.printf("   addr: %s\n", http_data_cfg.addr);
+    Serial.printf("   interval: %d ms\n", http_data_cfg.interval);
+    Serial.printf("   timeout: %d ms\n", http_data_cfg.timeout);
+  } else {
+    Serial.println("⚠️ Brak sekcji 'http_data' w config.json - używam domyślnych wartości");
+    // Ustaw domyślne wartości
+    strlcpy(http_data_cfg.addr, "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
+    http_data_cfg.interval = 5000;
+    http_data_cfg.timeout = 5000;
+    http_data_cfg.max_retries = 3;
+    http_data_cfg.retry_delay = 1000;
+  } 
 
   // ========== ODCZYT KONFIGURACJI MODBUS ==========
   JsonObject modbus = doc["modbus"];

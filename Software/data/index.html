@@ -44,8 +44,8 @@
             <!-- KARTA: NAPIĘCIA SIECI -->
             <div class='card'>
                 <h3>☀️ Falownik Sofar 
-                    <span id='modbusStatus' class='status'></span>
-                    <span id='modbusStatusText' style='font-size: 12px;'></span>
+                    <span id='DataReadStatus' class='status'></span>
+                    <span id='DataReadStatusText' style='font-size: 12px;'></span>
                 </h3>
                 <table>
                     <tr><td>Faza L1:</td><td><span id='v1'>---</span> <span class='unit'>V</span></td></tr>
@@ -188,6 +188,7 @@
                 <table>
                     <tr><td>WiFi:</td><td><span id='wifiStatus'>---</span></td></tr>
                     <tr><td>IP:</td><td><span id='ip'>---</span></td></tr>
+                    <tr><td>Siła sygnału:</td><td><span id='rssi'>---</span></td></tr>
                     <tr><td>Uptime:</td><td><span id='uptime'>---</span></td></tr>
                     <tr><td>Free RAM:</td><td><span id='freeHeap'>---</span> <span class='unit'>bytes</span></td></tr>                    
                 </table>
@@ -222,7 +223,7 @@
                 </label>
                 <div id='simControls' style='display:none; margin-top:10px;'>
                     
-                    <!-- Status Modbus -->
+                    <!-- Status Modbus symulacja -->
                     <div style='margin-bottom:15px; padding:10px; background:#f0f0f0; border-radius:5px;'>
                         <label class='checkbox-group'>
                             <input type='checkbox' id='simModbusConnected' onchange='saveSimulation()'> 
@@ -256,72 +257,91 @@
     <script>
         let heaterSystemEnabled = true;  // przechowuje stan systemu
         
-
-        function fetchModbusData() {
-            fetch('/api/data')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Modbus data:', data);
-                    const connected = data.modbus?.connected || false;
-                    const statusSpan = document.getElementById('modbusStatus');
-                    const statusText = document.getElementById('modbusStatusText');
-                    
-                    if (statusSpan) {
-                        statusSpan.className = connected ? 'status online' : 'status offline';
-                    }
-                    if (statusText) {
-                        statusText.innerHTML = connected ? 'Online' : 'Offline';
-                    }
-                    
-                    if (connected && data.modbus) {
-                        // Napięcia
-                        document.getElementById('v1').innerHTML = data.modbus.grid?.v1?.toFixed(1) || '---';
-                        document.getElementById('v2').innerHTML = data.modbus.grid?.v2?.toFixed(1) || '---';
-                        document.getElementById('v3').innerHTML = data.modbus.grid?.v3?.toFixed(1) || '---';
-                        
-                        // Prądy
-                        document.getElementById('a1').innerHTML = data.modbus.grid?.a1?.toFixed(2) || '---';
-                        document.getElementById('a2').innerHTML = data.modbus.grid?.a2?.toFixed(2) || '---';
-                        document.getElementById('a3').innerHTML = data.modbus.grid?.a3?.toFixed(2) || '---';
-                        
-                        // Moc
-                        document.getElementById('totalPower').innerHTML = data.modbus.total_power?.toFixed(0) || '---';
-                        
-                        // PV
-                        document.getElementById('pv1_v').innerHTML = data.modbus.pv?.p1_voltage?.toFixed(1) || '---';
-                        document.getElementById('pv1_a').innerHTML = data.modbus.pv?.p1_current?.toFixed(2) || '---';
-                        document.getElementById('pv1_w').innerHTML = data.modbus.pv?.p1_power?.toFixed(0) || '---';
-                        document.getElementById('pv2_v').innerHTML = data.modbus.pv?.p2_voltage?.toFixed(1) || '---';
-                        document.getElementById('pv2_a').innerHTML = data.modbus.pv?.p2_current?.toFixed(2) || '---';
-                        document.getElementById('pv2_w').innerHTML = data.modbus.pv?.p2_power?.toFixed(0) || '---';
-                        document.getElementById('totalPV').innerHTML = data.modbus.pv?.total_power?.toFixed(0) || '---';
-                        
-                        // Produkcja
-                        document.getElementById('dailyEnergy').innerHTML = data.modbus.daily_energy?.toFixed(2) || '---';
-                        document.getElementById('totalEnergy').innerHTML = data.modbus.total_energy?.toFixed(0) || '---';
-                        document.getElementById('tempInner').innerHTML = data.modbus.temp_inner || '---';
-                        document.getElementById('tempModule').innerHTML = data.modbus.temp_module || '---';
-                    }
-                    
-                    // Konfiguracja grzałek (ze struktury U)
-                    if (data.heater_config) {
-                        document.getElementById('u_on').innerHTML = data.heater_config.u_on?.toFixed(1) || '---';
-                        document.getElementById('u_off').innerHTML = data.heater_config.u_off?.toFixed(1) || '---';
-                    }
-                })
-                .catch(err => console.error('Błąd fetch Modbus:', err));
-        }
+        function fetchInverterData() {
+    fetch('/api/data')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Inverter data:', data);
+            const inverter = data.inverterData;
+            const connected = inverter?.connected || false;
+            const statusSpan = document.getElementById('DataReadStatus');
+            const statusText = document.getElementById('DataReadStatusText');
+            
+            if (statusSpan) {
+                statusSpan.className = connected ? 'status online' : 'status offline';
+            }
+            if (statusText) {
+                statusText.innerHTML = connected ? 'Online' : 'Offline';
+            }
+            
+            if (connected && inverter) {
+                // Napięcia
+                document.getElementById('v1').innerHTML = inverter.grid?.v1?.toFixed(1) || '---';
+                document.getElementById('v2').innerHTML = inverter.grid?.v2?.toFixed(1) || '---';
+                document.getElementById('v3').innerHTML = inverter.grid?.v3?.toFixed(1) || '---';
+                
+                // Prądy
+                document.getElementById('a1').innerHTML = inverter.grid?.a1?.toFixed(2) || '---';
+                document.getElementById('a2').innerHTML = inverter.grid?.a2?.toFixed(2) || '---';
+                document.getElementById('a3').innerHTML = inverter.grid?.a3?.toFixed(2) || '---';
+                
+                // Moc
+                document.getElementById('totalPower').innerHTML = inverter.total_power?.toFixed(0) || '---';
+                
+                // PV
+                document.getElementById('pv1_v').innerHTML = inverter.pv?.p1_voltage?.toFixed(1) || '---';
+                document.getElementById('pv1_a').innerHTML = inverter.pv?.p1_current?.toFixed(2) || '---';
+                document.getElementById('pv1_w').innerHTML = inverter.pv?.p1_power?.toFixed(0) || '---';
+                document.getElementById('pv2_v').innerHTML = inverter.pv?.p2_voltage?.toFixed(1) || '---';
+                document.getElementById('pv2_a').innerHTML = inverter.pv?.p2_current?.toFixed(2) || '---';
+                document.getElementById('pv2_w').innerHTML = inverter.pv?.p2_power?.toFixed(0) || '---';
+                document.getElementById('totalPV').innerHTML = inverter.pv?.total_power?.toFixed(0) || '---';
+                
+                // Produkcja i temperatura
+                document.getElementById('dailyEnergy').innerHTML = inverter.daily_energy?.toFixed(2) || '---';
+                document.getElementById('totalEnergy').innerHTML = inverter.total_energy?.toFixed(0) || '---';
+                document.getElementById('tempInner').innerHTML = inverter.temp_inner || '---';
+                document.getElementById('tempModule').innerHTML = inverter.temp_module || '---';
+            }   
+        })
+        .catch(err => {
+            console.error('Błąd fetch:', err);
+            const statusSpan = document.getElementById('DataReadStatus');
+            const statusText = document.getElementById('DataReadStatusText');
+            if (statusSpan) statusSpan.className = 'status offline';
+            if (statusText) statusText.innerHTML = 'Błąd połączenia';
+        });
+    }
 
         function fetchHeaterConfig() {
             fetch('/api/heater_config')
                 .then(response => response.json())
                 .then(data => {
+                    // Progi napięć
                     document.getElementById('u_on').innerHTML = data.u_on?.toFixed(1) || '---';
                     document.getElementById('u_off').innerHTML = data.u_off?.toFixed(1) || '---';
+                    
+                    // Opóźnienia
                     document.getElementById('delay_on').innerHTML = data.delay_on_ms || '---';
                     document.getElementById('delay_off').innerHTML = data.delay_off_ms || '---';
                     document.getElementById('ContactorDelay_off_ms').innerHTML = data.ContactorDelay_off_ms || '---';
-                    document.getElementById('systemStatusText').innerHTML = data.enabled ? '✅ Aktywny' : '⛔ Wyłączony';
+                    
+                    // Status systemu
+                    document.getElementById('systemStatusText').innerHTML = data.Heater_enabled ? '✅ Aktywny' : '⛔ Wyłączony';
+                    
+                    // ========== TEMPERATURY MAX – pobrane z config ==========
+                    const boilerMax = data.bojler_Tmax ?? 80;
+                    const radMax = data.radiator_Tmax ?? 60;
+                    
+                    // Aktualizuj wyświetlane wartości max
+                    const boilerMaxSpan = document.getElementById('tempBojlerMax');
+                    const radMaxSpan = document.getElementById('tempRadiatorMax');
+                    if (boilerMaxSpan) boilerMaxSpan.innerHTML = boilerMax.toFixed(1);
+                    if (radMaxSpan) radMaxSpan.innerHTML = radMax.toFixed(1);
+                    
+                    // Zapisz do zmiennych globalnych żeby updateTemperatures() mogło ich użyć
+                    window.boilerTmax = boilerMax;
+                    window.radiatorTmax = radMax;
                 })
                 .catch(err => console.error('Błąd fetch heater config:', err));
         }
@@ -335,8 +355,25 @@
                     document.getElementById('ip').innerHTML = data.ip || '---';
                     document.getElementById('uptime').innerHTML = data.uptime || '---';
                     document.getElementById('freeHeap').innerHTML = data.free_heap || '---';
+
+                    // Siła sygnału WiFi
+                    const rssi = data.rssi;
+                    const rssiSpan = document.getElementById('rssi');
+                    if (rssiSpan && rssi !== undefined) {
+                        let icon, color;
+                        if (rssi >= -50) {
+                            icon = '📶 Doskonały';  color = '#4CAF50';
+                        } else if (rssi >= -60) {
+                            icon = '📶 Dobry';      color = '#8BC34A';
+                        } else if (rssi >= -70) {
+                            icon = '📶 Średni';     color = '#FF9800';
+                        } else {
+                            icon = '📶 Słaby';      color = '#f44336';
+                        }
+                        rssiSpan.innerHTML = `<span style="color:${color}">${icon} (${rssi} dBm)</span>`;
+                    }
                     
-                    // ========== DODANE: WERSJA OPROGRAMOWANIA ==========
+                    // ========== WERSJA OPROGRAMOWANIA ==========
                     const fwVersionSpan = document.getElementById('firmwareVersion');
                     const compileSpan = document.getElementById('compileDatetime');
                     if (fwVersionSpan) fwVersionSpan.innerHTML = data.firmware_version || '---';
@@ -369,22 +406,6 @@
                         contactorSpan.innerHTML = `${dot} ${status}`;
                         contactorSpan.style.color = isOn ? '#4CAF50' : '#666';
                     }
-
-                    
-                    // Dodatkowy komunikat o blokadzie temperaturowej
-                    const heaterStatus = document.getElementById('heaterStatus');
-                    if (heaterStatus) {
-                        if (temp >= tempMax) {
-                            heaterStatus.innerHTML = '⚠️ Temperatura osiągnęła maksimum! Grzałki zablokowane.';
-                            heaterStatus.style.color = '#f44336';
-                        } else if (temp >= tempMax - 2) {
-                            heaterStatus.innerHTML = '⚠️ Temperatura blisko maksimum! Za chwilę blokada grzałek.';
-                            heaterStatus.style.color = '#ff9800';
-                        } else {
-                            heaterStatus.innerHTML = '✅ Grzałki mogą być załączane (temperatura bezpieczna)';
-                            heaterStatus.style.color = '#4CAF50';
-                        }
-                    }
                 })
                 .catch(err => console.error('Błąd fetch status:', err));
         }
@@ -399,11 +420,14 @@
             fetch('/api/temperatures')
                 .then(response => response.json())
                 .then(data => {
+                   // Pobierz z globalnych (ustawionych przez fetchHeaterConfig) z fallbackiem
+                    const boilerMax = window.boilerTmax ?? 80.0;
+                    const radMax = window.radiatorTmax ?? 60.0;
+
                     // === BOJLER ===
-                    const boilerOk = data.bojler?.ok || false;
                     const boilerTemp = data.bojler?.temp;
-                    const boilerMax = 80.0; // Pobierane z config
-                    
+                    const boilerOk = data.bojler?.ok || false;
+                                        
                     const boilerDisplay = document.getElementById('tempBojlerDisplay');
                     const boilerStatus = document.getElementById('bojlerStatus');
                     const boilerBar = document.getElementById('bojlerBar');
@@ -441,8 +465,7 @@
                     // === RADIATOR ===
                     const radOk = data.radiator?.ok || false;
                     const radTemp = data.radiator?.temp;
-                    const radMax = 60.0; // Pobierane z config
-                    
+                   
                     const radDisplay = document.getElementById('tempRadiatorDisplay');
                     const radStatus = document.getElementById('radiatorStatus');
                     const radBar = document.getElementById('radiatorBar');
@@ -525,14 +548,6 @@
         if (g2) g2.onclick = () => toggleGrzalka(2);
         if (g3) g3.onclick = () => toggleGrzalka(3);
         
-        // Start
-        fetchModbusData();
-        fetchSystemStatus();
-        fetchNTPTime()
-        setInterval(fetchModbusData, 3000);
-        setInterval(fetchSystemStatus, 5000);
-        setInterval(fetchNTPTime, 10000);
-
         // ========== FUNKCJE DO TRYBU SYMULACJI ==========
         
         function loadSimulation() {
@@ -638,11 +653,17 @@
         }
 
         // Załaduj przy starcie
-        loadSimulation();
-        loadHeaterStatus();
+         // Start
         fetchHeaterConfig();
+        fetchInverterData();
+        fetchNTPTime()
+        loadHeaterStatus();
         fetchSystemStatus();
         updateTemperatures();
+        loadSimulation();
+        
+        setInterval(fetchInverterData, 3000);
+        setInterval(fetchNTPTime, 10000);
         setInterval(updateTemperatures, 5000);
         setInterval(fetchHeaterConfig, 5000);
         setInterval(fetchSystemStatus, 5000); 

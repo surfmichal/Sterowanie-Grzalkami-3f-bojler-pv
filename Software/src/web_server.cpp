@@ -296,6 +296,7 @@ void WebServerManager::handleApiStatus() {
   DynamicJsonDocument doc(512);
   
   doc["wifi_connected"] = (WiFi.status() == WL_CONNECTED);
+  doc["rssi"] = WiFi.RSSI();
   doc["ip"] = wifi->getLocalIP();
   
   unsigned long uptime = millis() / 1000;

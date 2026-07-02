@@ -1,5 +1,5 @@
-- algorytm opóźnienia załączania każdej z grzałek
-- sprawdzić algorytm wyłączenia każdej z grzałek
-- 
+- sprawdzić algorytmy załączania i wyłączania
 
-- przekierowanie na adres po wprowadzeniu adresu ip
+- sprawdzić działanie liczników
+- sprawdzić działanie blokad
+

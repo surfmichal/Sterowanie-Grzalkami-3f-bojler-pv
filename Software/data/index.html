@@ -43,7 +43,7 @@
             
             <!-- KARTA: NAPIĘCIA SIECI -->
             <div class='card'>
-                <h3>☀️ Falownik Sofar 
+                <h3>☀️ Inwerter dane z <span id='dataSource'>---</span> 
                     <span id='DataReadStatus' class='status'></span>
                     <span id='DataReadStatusText' style='font-size: 12px;'></span>
                 </h3>
@@ -317,6 +317,7 @@
             fetch('/api/heater_config')
                 .then(response => response.json())
                 .then(data => {
+                    document.getElementById('dataSource').innerHTML = data.data_source || '---';
                     // Progi napięć
                     document.getElementById('u_on').innerHTML = data.u_on?.toFixed(1) || '---';
                     document.getElementById('u_off').innerHTML = data.u_off?.toFixed(1) || '---';

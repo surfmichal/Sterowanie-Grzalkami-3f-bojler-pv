@@ -35,20 +35,21 @@ void setup() {
   
   // ===== INICJALIZACJA PINÓW (z globals.h) =====
   pinMode(LED_BUILTIN_pin, OUTPUT);
-  
-  pinMode(LED_GRZALKA1_pin, OUTPUT);
-  pinMode(LED_GRZALKA2_pin, OUTPUT);
-  pinMode(LED_GRZALKA3_pin, OUTPUT);
-  pinMode(GRZALKA1_pin, OUTPUT);
-  pinMode(GRZALKA2_pin, OUTPUT);
-  pinMode(GRZALKA3_pin, OUTPUT);
-  pinMode(RESET_WIFI_pin, INPUT_PULLUP);  // Używamy poprawnej nazwy z globals.h
+    pinMode(RESET_WIFI_pin, INPUT_PULLUP);  // Używamy poprawnej nazwy z globals.h
   
   // Ustawienia początkowe
+  digitalWrite(LED_BUILTIN_pin, HIGH);
+  GRZALKA1_grzanie(GRZALKA_OFF);
+  GRZALKA2_grzanie(GRZALKA_OFF);
+  GRZALKA3_grzanie(GRZALKA_OFF);
+
+  delay(500);
   digitalWrite(LED_BUILTIN_pin, LOW);
-  GRZALKA1_grzanie(OFF);
-  GRZALKA2_grzanie(OFF);
-  GRZALKA3_grzanie(OFF);
+  delay(500);
+  digitalWrite(LED_BUILTIN_pin, HIGH);
+  delay(500);
+  digitalWrite(LED_BUILTIN_pin, LOW);
+  
 
   // ===== KONFIGURACJA WATCHDOG =====
   esp_task_wdt_deinit();                       // wyłącz domyślny watchdog

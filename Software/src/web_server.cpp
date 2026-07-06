@@ -20,6 +20,7 @@ extern LicznikiCzasu liczniki;
 extern TemperatureFIFO tempFIFO;
 extern Temperatury T;              // 
 extern StycznikState stycznik;     // 
+extern DataSource activeDataSource;  //
 
 // Zmienne symulacji
 extern bool simulationMode;               // 
@@ -189,6 +190,7 @@ void WebServerManager::handleApiTemperatures() {
 // ========== API: KONFIGURACJA GRZAŁEK (GET) ==========
 void WebServerManager::handleApiHeaterConfig() {
   DynamicJsonDocument doc(256);
+  doc["data_source"] = (activeDataSource == SOURCE_MODBUS) ? "modbus" : (activeDataSource == SOURCE_HTTP) ? "http" : "none";
   doc["u_on"] = U.Ugrid_on;
   doc["u_off"] = U.Ugrid_off;
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;

@@ -4,16 +4,18 @@
 #include "logger.h"
 
 const char* ConfigManager::mainConfigPath = "/config.json";
-const char* ConfigManager::wlanConfigPath = "/wlan.json";
 
 // Deklaracje zewnętrzne (definicje są w globals.cpp)
-extern APConfig ap_config;
+extern WifiConfig wifiCfg;
+extern APConfig apCfg;
 extern ModbusConfig modbusCfg;
+extern HttpDataConfig httpDataCfg;
+extern NtpConfig ntpCfg;
+extern DataSource activeDataSource;
 
-ConfigManager::ConfigManager() {
-  memset(&wifiConfig, 0, sizeof(wifiConfig));
-}
+ConfigManager::ConfigManager() {}
 
+// ========== INICJALIZACJA ==========
 bool ConfigManager::begin() {
     Serial.println("Inicjalizacja LittleFS...");
     if (!LittleFS.begin(true)) {
@@ -21,18 +23,12 @@ bool ConfigManager::begin() {
         return false;
     }
     
-    bool mainOk = loadMainConfig();  // ← ładuje WiFi, Modbus, Ustawienia, http_data, data_source
+    bool mainOk = loadMainConfig();
     if (!mainOk) {
         Serial.println("Brak config.json – używam domyślnych");
     }
     
-    bool apOk = loadWlanConfig();
-    if (!apOk) {
-        Serial.println("Brak wlan.json – tworzę domyślny");
-        saveAPConfig("ESP_Config", "", true);
-    }
-    
-    return true;  // ← zawsze true jeśli LittleFS działa
+    return true;
 }
 
 // ========== OBSŁUGA GŁÓWNEJ KONFIGURACJI ==========
@@ -44,6 +40,7 @@ bool ConfigManager::loadMainConfig()
         return false;
 
     loadWifiConfig(doc);
+    loadAPConfig(doc);          // ← poprawione: doc["ap"]
     loadModbusConfig(doc);
     loadSettingsConfig(doc);
     loadHttpConfig(doc);
@@ -53,6 +50,7 @@ bool ConfigManager::loadMainConfig()
     return true;
 }
 
+// ========== ODCZYT PLIKU KONFIGURACJI ==========
 bool ConfigManager::loadConfig(JsonDocument& doc)
 {
     File file = LittleFS.open("/config.json", "r");
@@ -76,6 +74,7 @@ bool ConfigManager::loadConfig(JsonDocument& doc)
     return true;
 }
 
+// ========== ZAPIS PLIKU KONFIGURACJI ==========
 bool ConfigManager::saveConfig(const JsonDocument& doc)
 {
     File file = LittleFS.open("/config.tmp", "w");
@@ -90,7 +89,6 @@ bool ConfigManager::saveConfig(const JsonDocument& doc)
     {
         file.close();
         LittleFS.remove("/config.tmp");
-
         Serial.println("Błąd zapisu JSON");
         return false;
     }
@@ -113,6 +111,7 @@ bool ConfigManager::saveConfig(const JsonDocument& doc)
     return true;
 }
 
+// ========== AKTUALIZACJA KONFIGURACJI ==========
 bool ConfigManager::updateConfig(std::function<void(JsonDocument&)> updater)
 {
     DynamicJsonDocument doc(4096);
@@ -125,6 +124,22 @@ bool ConfigManager::updateConfig(std::function<void(JsonDocument&)> updater)
     return saveConfig(doc);
 }
 
+// ========== ODCZYT KONFIGURACJI WIFI ==========
+void ConfigManager::loadWifiConfig(JsonDocument& doc) {
+    JsonObject wifi = doc["wifi"];
+    if (!wifi.isNull()) {
+        wifiCfg.active = wifi["active"] | true;
+        wifiCfg.dhcp = wifi["dhcp"] | false;
+        strlcpy(wifiCfg.ip, wifi["ip"] | "192.168.20.34", sizeof(wifiCfg.ip));
+        strlcpy(wifiCfg.mask, wifi["mask"] | "255.255.255.0", sizeof(wifiCfg.mask));
+        strlcpy(wifiCfg.gate, wifi["gate"] | "192.168.20.1", sizeof(wifiCfg.gate));
+        strlcpy(wifiCfg.dns, wifi["dns"] | "8.8.8.8", sizeof(wifiCfg.dns));
+        strlcpy(wifiCfg.ssid, wifi["ssid"] | "", sizeof(wifiCfg.ssid));
+        strlcpy(wifiCfg.pass, wifi["pass"] | "", sizeof(wifiCfg.pass));
+    }
+}
+
+// ========== ZAPIS KONFIGURACJI WIFI ==========
 bool ConfigManager::saveWifiConfig()
 {
     return updateConfig([this](JsonDocument& doc)
@@ -142,6 +157,133 @@ bool ConfigManager::saveWifiConfig()
     });
 }
 
+bool ConfigManager::saveWifiConfig(const char* ssid, const char* pass, 
+                                   const char* ip, const char* gate, 
+                                   const char* mask, const char* dns,
+                                   bool dhcp, bool active) {
+    // Kopiuj do globalnej wifiCfg
+    strlcpy(wifiCfg.ssid, ssid, sizeof(wifiCfg.ssid));
+    strlcpy(wifiCfg.pass, pass, sizeof(wifiCfg.pass));
+    strlcpy(wifiCfg.ip, ip, sizeof(wifiCfg.ip));
+    strlcpy(wifiCfg.gate, gate, sizeof(wifiCfg.gate));
+    strlcpy(wifiCfg.mask, mask, sizeof(wifiCfg.mask));
+    strlcpy(wifiCfg.dns, dns, sizeof(wifiCfg.dns));
+    wifiCfg.dhcp = dhcp;
+    wifiCfg.active = active;
+    
+    // Zapisz do pliku
+    return saveWifiConfig();
+}
+
+// ========== ODCZYT KONFIGURACJI AP ==========
+void ConfigManager::loadAPConfig(JsonDocument& doc) {
+    JsonObject ap = doc["ap"];   // ← POPRAWNIE: "ap"
+    if (!ap.isNull()) {
+        strlcpy(apCfg.ip, ap["ip"] | "192.168.4.1", sizeof(apCfg.ip));
+        strlcpy(apCfg.password, ap["password"] | "", sizeof(apCfg.password));
+        strlcpy(apCfg.ssid, ap["ssid"] | "ESP32_Config", sizeof(apCfg.ssid));
+        apCfg.active = ap["active"] | true;
+    }
+}
+
+// ========== ZAPIS KONFIGURACJI AP ==========
+bool ConfigManager::saveAPConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject ap = doc["ap"];
+
+        ap["ip"] = apCfg.ip;
+        ap["password"] = apCfg.password;
+        ap["ssid"] = apCfg.ssid;
+        ap["active"] = apCfg.active;
+    });
+}
+
+bool ConfigManager::saveAPConfig(const char* ssid, const char* pass,
+                                 const char* ip, bool active) {
+    // Kopiuj do globalnej apCfg
+    strlcpy(apCfg.ssid, ssid, sizeof(apCfg.ssid));
+    strlcpy(apCfg.password, pass, sizeof(apCfg.password));
+    strlcpy(apCfg.ip, ip, sizeof(apCfg.ip));
+    apCfg.active = active;
+    
+    // Zapisz do pliku
+    return saveAPConfig();
+}
+
+// ========== ODCZYT KONFIGURACJI ŹRÓDŁA DANYCH ==========
+void ConfigManager::loadDataSourceConfig(JsonDocument& doc) {
+    JsonObject ds = doc["data_source"];
+    if (!ds.isNull()) {
+        const char* src = ds["source"] | "modbus";
+        activeDataSource = strcmp(src, "http") == 0 ? SOURCE_HTTP : SOURCE_MODBUS;
+    }
+}
+
+// ========== ZAPIS ŹRÓDŁA DANYCH ==========
+bool ConfigManager::saveDataSource()
+{
+    const char* source = (activeDataSource == SOURCE_HTTP) ? "http" : "modbus";
+
+    return updateConfig([&](JsonDocument& doc)
+    {
+        doc["data_source"]["source"] = source;
+    });
+}
+
+// ========== ZAPIS ŹRÓDŁA DANYCH (z parametrem) ==========
+bool ConfigManager::saveDataSource(const char* source) {
+    if (strcmp(source, "http") == 0) {
+        activeDataSource = SOURCE_HTTP;
+    } else {
+        activeDataSource = SOURCE_MODBUS;
+    }
+    return saveDataSource();  // wywołaj wersję bez parametrów
+}
+
+// ========== ODCZYT KONFIGURACJI HTTP ==========
+void ConfigManager::loadHttpConfig(JsonDocument& doc) {
+    JsonObject http = doc["http_data"];
+    if (!http.isNull()) {
+        strlcpy(httpDataCfg.addr, http["addr"] | "", sizeof(httpDataCfg.addr));
+        httpDataCfg.interval = http["interval"] | 10000;
+        httpDataCfg.timeout = http["timeout"] | 2000;
+        httpDataCfg.maxRetries = http["max_retries"] | 3;
+        httpDataCfg.retryDelay = http["retry_delay"] | 1000;
+    }
+}
+
+// ========== ZAPIS KONFIGURACJI HTTP DATA ==========
+bool ConfigManager::saveHttpDataConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject http = doc["http_data"];
+
+        http["addr"] = httpDataCfg.addr;
+        http["interval"] = httpDataCfg.interval;
+        http["timeout"] = httpDataCfg.timeout;
+        http["max_retries"] = httpDataCfg.maxRetries;
+        http["retry_delay"] = httpDataCfg.retryDelay;
+    });
+}
+
+// ========== ODCZYT KONFIGURACJI MODBUS ==========
+void ConfigManager::loadModbusConfig(JsonDocument& doc) {
+    JsonObject modbus = doc["modbus"];
+    if (!modbus.isNull()) {
+        strlcpy(modbusCfg.ip, modbus["ip"] | "192.168.20.70", sizeof(modbusCfg.ip));
+        modbusCfg.port = modbus["port"] | 502;
+        modbusCfg.unitId = modbus["unitId"] | 1;
+        modbusCfg.readInterval = modbus["readInterval"] | 1000;
+        modbusCfg.timeout = modbus["timeout"] | 1000;
+        modbusCfg.maxRetries = modbus["max_retries"] | 3;
+        modbusCfg.retryDelay = modbus["retry_delay"] | 1000;
+    }
+}       
+
+// ========== ZAPIS KONFIGURACJI MODBUS ==========
 bool ConfigManager::saveModbusConfig()
 {
     return updateConfig([this](JsonDocument& doc)
@@ -158,170 +300,48 @@ bool ConfigManager::saveModbusConfig()
     });
 }
 
-bool ConfigManager::saveHttpDataConfig()
-{
-    return updateConfig([this](JsonDocument& doc)
-    {
-        JsonObject http = doc["http_data"];
-
-        http["addr"] = httpDataCfg.addr;
-        http["interval"] = httpDataCfg.interval;
-        http["timeout"] = httpDataCfg.timeout;
-        http["max_retries"] = httpDataCfg.maxRetries;
-        http["retry_delay"] = httpDataCfg.retryDelay;
-    });
-}
-
-void ConfigManager::loadWifiConfig(JsonDocument& doc) {
-    JsonObject http = doc["wifi"];
-    if (!http.isNull()) {
-        wifiCfg.active = wifi["active"] | true;
-        wifiCfg.dhcp = wifi["dhcp"] | false;
-        wifiCfg.ip  = wifi.["ip"] | "192.168.20.34";
-        wifiCfg.mask = wifi["mask"] | "255.255.255.0";
-        wifiCfg.gate = wifi["gate"] | "192.168.20.1";
-        wifiCfg.pass = wifi["pass"] | "",
-        wifiCfg.ssid = wifi["ssid"] | ""
-    }
-}
-
-void ConfigManager::loadHttpConfig(JsonDocument& doc) {
-    JsonObject http = doc["http_data"];
-    if (!http.isNull()) {
-        httpDataCfg.addr = http["addr"] | "";
-        httpDataCfg.interval = http["interval"] | 10000;
-        httpDataCfg.timeout = http["timeout"] | 2000;
-        httpDataCfg.maxRetries = http["max_retries"] | 3;
-        httpDataCfg.retryDelay = http["retry_delay"] | 1000;
-    }
-}
-
-void ConfigManager::loadDataSourceConfig(JsonDocument& doc) {
-    JsonObject ds = doc["data_source"];
-    if (!ds.isNull()) {
-        const char* src = ds["source"] | "modbus";
-        activeDataSource = strcmp(src, "http") == 0 ? SOURCE_HTTP : SOURCE_MODBUS;
-    }
-}
-
+// ========== ODCZYT KONFIGURACJI NTP ==========
 void ConfigManager::loadNtpConfig(JsonDocument& doc) {
     JsonObject ntp = doc["ntp"];
     if (!ntp.isNull()) {
-        ntpCfg.server = ntp["server"] | "pool.ntp.org";
+        strlcpy(ntpCfg.server, ntp["server"] | "pool.ntp.org", sizeof(ntpCfg.server));
         ntpCfg.gmt_offset = ntp["gmt_offset"] | 3600;
         ntpCfg.daylight_offset = ntp["daylight_offset"] | 3600;
+        strlcpy(ntpCfg.timezone, ntp["timezone"] | "CET-1CEST-2,M3.5.0/2,M10.5.0/3", sizeof(ntpCfg.timezone));
+        ntpCfg.enabled = ntp["enabled"] | true;
     }
 }
 
-// ========== OBSŁUGA KONFIGURACJI AP ==========
-bool ConfigManager::loadWlanConfig() {
-  File file = LittleFS.open(wlanConfigPath, "r");
-  if (!file) return false;
-  
-  //String content = file.readString();
-  
-  DynamicJsonDocument doc(4096);
-  DeserializationError error = deserializeJson(doc, file);
-  file.close();
-  
-  if (error) {
-    Serial.print("Błąd parsowania wlan.json: ");
-    Serial.println(error.c_str());
-    return false;
-  }
-  
-  JsonObject ap = doc["ap"];
-  
-  // Kopiuj do globalnej struktury ap_config
-  strlcpy(ap_config.ssid, ap["ssid"] | "ESP_Config", sizeof(ap_config.ssid));
-  strlcpy(ap_config.password, ap["password"] | "", sizeof(ap_config.password));
-  ap_config.active = ap["active"] | true;
-  
-  Serial.println("📋 Odczytano konfigurację AP:");
-  Serial.printf("   SSID: %s\n", ap_config.ssid);
-  Serial.printf("   Hasło: %s\n", ap_config.password[0] ? "***" : "(brak)");
-  
-  return true;
+// ========== ZAPIS KONFIGURACJI NTP ==========
+bool ConfigManager::saveNtpConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject ntp = doc["ntp"];
+
+        ntp["server"] = ntpCfg.server;
+        ntp["gmt_offset"] = ntpCfg.gmt_offset;
+        ntp["daylight_offset"] = ntpCfg.daylight_offset;
+        ntp["timezone"] = ntpCfg.timezone;
+        ntp["enabled"] = ntpCfg.enabled;
+    });
 }
 
-bool ConfigManager::saveAPConfig(const char* ssid, const char* password, bool active) {
-  Serial.println("🔴🔴🔴 UWAGA! saveAPConfig() ZAPISUJE wlan.json!");
-  DynamicJsonDocument doc(4096);
-  
-  if (ssid != nullptr) {
-    strlcpy(ap_config.ssid, ssid, sizeof(ap_config.ssid));
-  }
-  if (password != nullptr) {
-    strlcpy(ap_config.password, password, sizeof(ap_config.password));
-  }
-  ap_config.active = active;
-  
-  doc["ap"]["ssid"] = ap_config.ssid;
-  doc["ap"]["password"] = ap_config.password;
-  doc["ap"]["active"] = ap_config.active;
-  
-  File file = LittleFS.open(wlanConfigPath, "w");
-  if (!file) {
-    Serial.println("Błąd otwarcia wlan.json do zapisu");
-    return false;
-  }
-  
-  //String output;
-  size_t written = serializeJson(doc,file);
-  
-  Serial.println("✅ Zapisano konfigurację AP");
-  file.close();
-  return written > 0;
-}
-
-const char* ConfigManager::getAP_SSID() {
-  return ap_config.ssid;
-}
-
-const char* ConfigManager::getAP_Password() {
-  return ap_config.password;
-}
-
-bool ConfigManager::isAPActive() {
-  return ap_config.active;
-}
-
-WifiConfig& ConfigManager::getWifiConfig() {
-    return wifiConfig;
-}
-
-ModbusConfig& ConfigManager::getModbusConfig() {
-    return modbusCfg;
-}
-
-Ustawienia& ConfigManager::getUstawienia() {
-    return U;
-}
-
-HttpDataConfig& ConfigManager::getHttpDataConfig() {
-    return httpDataCfg;
-}
-
-void ConfigManager::printConfig() {
-  Serial.println("=== GŁÓWNA KONFIGURACJA ===");
-  Serial.print("SSID: "); Serial.println(wifiConfig.ssid);
-  Serial.print("IP: "); Serial.println(wifiConfig.ip);
-  Serial.print("DHCP: "); Serial.println(wifiConfig.dhcp ? "true" : "false");
-  
-  Serial.println("=== KONFIGURACJA MODBUS ===");
-  Serial.print("Enabled: "); Serial.println(modbusCfg.enabled ? "true" : "false");
-  Serial.print("IP: "); Serial.println(modbusCfg.ip);
-  Serial.print("Port: "); Serial.println(modbusCfg.port);
-  Serial.print("Unit ID: "); Serial.println(modbusCfg.unitId);
-  
-  Serial.println("=== KONFIGURACJA AP ===");
-  Serial.print("AP SSID: "); Serial.println(ap_config.ssid);
-  Serial.print("AP Aktywny: "); Serial.println(ap_config.active ? "Tak" : "Nie");
-}
-
-
-bool ConfigManager::saveHeaterConfig() {
-  return saveMainConfig();  // Najprościej - zapisz cały plik config.json
+// ========== ODCZYT STRUKTURY USTAWIENIA ==========
+void ConfigManager::loadSettingsConfig(JsonDocument& doc)
+{
+    JsonObject s = doc["Ustawienia"];
+    if (!s.isNull()) {
+        U.HeaterEnabled = s["HeaterEnabled"] | true;
+        U.Ugrid_on = s["Ugrid_on"] | 252.0;
+        U.Ugrid_off = s["Ugrid_off"] | 250.0;
+        U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
+        U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
+        U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
+        U.bojlerTmax = s["bojlerTmax"] | 80.0;
+        U.radiatorTmax = s["radiatorTmax"] | 70.0;
+        U.radiatorT_critical = s["radiatorT_critical"] | false;
+    }
 }
 
 // ========== ZAPIS STRUKTURY USTAWIENIA ==========
@@ -346,37 +366,38 @@ bool ConfigManager::saveUstawienia() {
   });  
 }
 
-// ========== ODCZYT STRUKTURY USTAWIENIA ==========
-void ConfigManager::loadSettingsConfig(JsonDocument& doc)
-{
-    JsonObject s = doc["Ustawienia"];
-    if (!s.isNull()) {
-        U.HeaterEnabled = s["HeaterEnabled"] | true;
-        U.Ugrid_on = s["Ugrid_on"] | 252.0;
-        U.Ugrid_off = s["Ugrid_off"] | 250.0;
-        U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
-        U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
-        U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
-        U.bojlerTmax = s["bojlerTmax"] | 80.0;
-        U.radiatorTmax = s["radiatorTmax"] | 70.0;
-        U.radiatorT_critical = s["radiatorT_critical"] | false;
-    }
-}
+// ========== DRUKOWANIE KONFIGURACJI ==========
+void ConfigManager::printConfig() {
+  if (wifiCfg.active) {
+    Serial.println("=== KONFIGURACJA WIFI ===");
+    Serial.print("SSID: "); Serial.println(wifiCfg.ssid);
+    Serial.print("IP: "); Serial.println(wifiCfg.ip);
+    Serial.print("DHCP: "); Serial.println(wifiCfg.dhcp ? "true" : "false");
+  } else {
+    Serial.println("=== KONFIGURACJA WIFI ===");
+    Serial.println("WiFi nieaktywne - urucham trybu AP");
+    Serial.print("AP SSID: "); Serial.println(apCfg.ssid);
+    Serial.print("AP IP: "); Serial.println(apCfg.ip);    
+  }
 
-// ========== HTTP DATA CONFIG ==========
-HttpDataConfig* ConfigManager::getHttpDataConfig() {
-  return &http_data_cfg;
-}
-
-bool ConfigManager::saveDataSource(const char* source)
-{
-    activeDataSource =
-        strcmp(source, "modbus") == 0 ?
-        SOURCE_MODBUS :
-        SOURCE_HTTP;
-
-    return updateConfig([&](JsonDocument& doc)
-    {
-        doc["data_source"]["source"] = source;
-    });
+  Serial.println("=== GŁÓWNA KONFIGURACJA ===");
+  if(activeDataSource == SOURCE_HTTP) {
+    Serial.println("Źródło danych: HTTP");
+    Serial.print("HTTP URL: "); Serial.println(httpDataCfg.addr);
+  } else if(activeDataSource == SOURCE_MODBUS) {
+    Serial.println("Źródło danych: Modbus");
+    Serial.print("Modbus IP: "); Serial.println(modbusCfg.ip);
+  } else {
+    Serial.println("Źródło danych: Brak");
+  }
+  Serial.println("=== USTAWIENIA ===");
+  Serial.print("Heater Enabled: "); Serial.println(U.HeaterEnabled ? "true" : "false");
+  Serial.print("Ugrid_on: "); Serial.println(U.Ugrid_on);
+  Serial.print("Ugrid_off: "); Serial.println(U.Ugrid_off);
+  Serial.print("HeaterDelay_on_ms: "); Serial.println(U.HeaterDelay_on_ms);
+  Serial.print("HeaterDelay_off_ms: "); Serial.println(U.HeaterDelay_off_ms);
+  Serial.print("ContactorDelay_off_ms: "); Serial.println(U.ContactorDelay_off_ms);
+  Serial.print("bojlerTmax: "); Serial.println(U.bojlerTmax);
+  Serial.print("radiatorTmax: "); Serial.println(U.radiatorTmax);
+  Serial.print("radiatorT_critical: "); Serial.println(U.radiatorT_critical ? "true" : "false");
 }

@@ -40,9 +40,10 @@
 
 // ========== DEKLARACJE STRUKTUR (zostają) ==========
 struct APConfig {
-  char ssid[32];        // Nazwa sieci AP (domyślnie "ESP_Config")
+  char ssid[32];        // Nazwa sieci AP (domyślnie "ESP32_Config")
   char password[64];    // Hasło do AP (puste = brak)
-  bool active;          // Czy tryb AP jest aktywny
+  char ip[16];          // Adres IP AP (domyślnie "192.168.4.1")
+  bool active;          // Czy tryb AP jest aktywny  
 };
 
 struct Bledy {
@@ -106,6 +107,14 @@ struct WifiConfig {
   char pass[30];
   bool dhcp;
   bool active;
+};
+
+struct NtpConfig {
+  char server[64];
+  int gmt_offset;
+  int daylight_offset; // w sekundach
+  char timezone[64];
+  bool enabled;
 };
 
 struct HeaterState {
@@ -291,12 +300,13 @@ extern Bledy       E_byle;
 extern Alarmy      A_teraz;
 extern Alarmy      A_byle;
 
-extern APConfig    apConfig;
+extern APConfig    apCfg;
 extern WifiConfig  wifiCfg;
 extern InverterData inverterData; 
 extern ModbusConfig modbusCfg;
 extern HttpDataConfig httpDataCfg;
 extern DataSource activeDataSource; 
+extern NtpConfig ntpCfg;
 
 extern Ustawienia  U;
 extern Zmienne     Z;

@@ -14,6 +14,7 @@ ModbusConfig modbusCfg    = {0};
 HttpDataConfig httpDataCfg = {false, "http://192.168.0.251:8080/api/data", 5000, 5000, 3, 1000};
 DataSource activeDataSource = SOURCE_NONE;
 InverterData inverterData = {0};
+NtpConfig ntpCfg = {0};
 
 HeaterState heater1_state = {false, 0, 0, false, false};
 HeaterState heater2_state = {false, 0, 0, false, false};

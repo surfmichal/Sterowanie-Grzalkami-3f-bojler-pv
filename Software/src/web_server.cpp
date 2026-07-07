@@ -198,7 +198,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
   doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
-  doc["Heater_enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
+  doc["HeaterEnabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
   doc["bojler_Tmax"] = U.bojlerTmax;
   doc["radiatorT_critical"] = U.radiatorT_critical;
   doc["radiator_Tmax"] = U.radiatorTmax;
@@ -606,8 +606,8 @@ void WebServerManager::handleApiGetDataSource() {
   doc["http_data"]["addr"] = httpCfg->addr;
   doc["http_data"]["interval"] = httpCfg->interval;
   doc["http_data"]["timeout"] = httpCfg->timeout;
-  doc["http_data"]["max_retries"] = httpCfg->max_retries;
-  doc["http_data"]["retry_delay"] = httpCfg->retry_delay;
+  doc["http_data"]["max_retries"] = httpCfg->maxRetries;
+  doc["http_data"]["retry_delay"] = httpCfg->retryDelay;
   
   // Konfiguracja Modbus
   doc["modbus"]["ip"] = modbusCfg.ip;
@@ -615,8 +615,8 @@ void WebServerManager::handleApiGetDataSource() {
   doc["modbus"]["unitId"] = modbusCfg.unitId;
   doc["modbus"]["readInterval"] = modbusCfg.readInterval;
   doc["modbus"]["timeout"] = modbusCfg.timeout;
-  doc["modbus"]["max_retries"] = modbusCfg.max_retries;
-  doc["modbus"]["retry_delay"] = modbusCfg.retry_delay;
+  doc["modbus"]["max_retries"] = modbusCfg.maxRetries;
+  doc["modbus"]["retry_delay"] = modbusCfg.retryDelay;
   
   String response;
   serializeJson(doc, response);
@@ -645,11 +645,11 @@ void WebServerManager::handleApiSaveDataSource() {
   
   // Zapisz HTTP config
   if (doc.containsKey("http_data")) {
-    strlcpy(http_data_cfg.addr, doc["http_data"]["addr"] | "", sizeof(http_data_cfg.addr));
-    http_data_cfg.interval    = doc["http_data"]["interval"]    | 5000;
-    http_data_cfg.timeout     = doc["http_data"]["timeout"]     | 5000;
-    http_data_cfg.max_retries = doc["http_data"]["max_retries"] | 3;
-    http_data_cfg.retry_delay = doc["http_data"]["retry_delay"] | 1000;
+    strlcpy(httpDataCfg.addr, doc["http_data"]["addr"] | "", sizeof(httpDataCfg.addr));
+    httpDataCfg.interval    = doc["http_data"]["interval"]    | 5000;
+    httpDataCfg.timeout     = doc["http_data"]["timeout"]     | 5000;
+    httpDataCfg.maxRetries = doc["http_data"]["max_retries"] | 3;
+    httpDataCfg.retryDelay = doc["http_data"]["retry_delay"] | 1000;
     config->saveHttpDataConfig();
   }
   
@@ -660,8 +660,8 @@ void WebServerManager::handleApiSaveDataSource() {
     modbusCfg.unitId      = doc["modbus"]["unitId"]      | 1;
     modbusCfg.readInterval = doc["modbus"]["readInterval"] | 1000;
     modbusCfg.timeout     = doc["modbus"]["timeout"]     | 1000;
-    modbusCfg.max_retries = doc["modbus"]["max_retries"] | 3;
-    modbusCfg.retry_delay = doc["modbus"]["retry_delay"] | 1000;
+    modbusCfg.maxRetries = doc["modbus"]["max_retries"] | 3;
+    modbusCfg.retryDelay = doc["modbus"]["retry_delay"] | 1000;
     config->saveModbusConfig();
   }
   
@@ -698,3 +698,4 @@ void WebServerManager::handleApiSimulationPost() {
   
   server.send(200, "application/json", "{\"success\":true}");
 }
+

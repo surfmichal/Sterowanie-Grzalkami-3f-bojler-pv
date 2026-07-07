@@ -290,8 +290,13 @@ void WiFiManager::handleSetAPConfig() {
   if (server.hasArg("ap_ssid")) {
     String ssid = server.arg("ap_ssid");
     String pass = server.arg("ap_pass");
-    config->saveAPConfig(ssid.c_str(), pass.c_str(), true);
+    String ip = server.arg("ap_ip");
+    String active = server.arg("ap_active");  
+    
+    config->saveAPConfig(ssid.c_str(), pass.c_str(), ip.c_str(), active == "true");
     server.send(200, "text/html", "<h3>Zapisano! Restart...</h3><script>setTimeout(function(){window.location.href='/';},2000);</script>");
+    Serial.println("Zapisano konfigurację AP. Restartowanie...");
+    //LOG_PRINT("Zapisano konfigurację AP. Restartowanie...");
     delay(1000);
     ESP.restart();
   } else {

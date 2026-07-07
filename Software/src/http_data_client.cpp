@@ -36,11 +36,11 @@ void HttpDataClient::begin() {
     return;
   }
  
-  apiUrl = String(http_data_cfg.addr);
-  fetchInterval = http_data_cfg.interval;
-  timeout = http_data_cfg.timeout;
-  maxRetries = http_data_cfg.max_retries;
-  retryDelay = http_data_cfg.retry_delay;
+  apiUrl = String(httpDataCfg.addr);
+  fetchInterval = httpDataCfg.interval;
+  timeout = httpDataCfg.timeout;
+  maxRetries = httpDataCfg.maxRetries;
+  retryDelay = httpDataCfg.retryDelay;
   
   Serial.printf("🌐 HTTP Data Client: %s (interval: %dms, timeout: %dms, retries: %d)\n", 
                 apiUrl.c_str(), fetchInterval, timeout, maxRetries);

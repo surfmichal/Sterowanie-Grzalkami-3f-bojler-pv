@@ -38,7 +38,6 @@ private:
   unsigned long timeout;
   uint8_t maxRetries;
   unsigned long retryDelay;
-  //bool enabled;
   String lastError;
   int consecutiveFailures;
   
@@ -54,6 +53,8 @@ public:
   void setEnabled(bool enabled);
   void setUrl(const String& url);
   void setFetchInterval(unsigned long intervalMs);
+
+  void reloadConfig();
   
   bool fetchData(HttpData& data);
   bool fetchDataAsync();  // zapisuje do globalnej modbusData

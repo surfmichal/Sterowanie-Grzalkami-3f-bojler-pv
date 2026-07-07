@@ -18,35 +18,101 @@ ConfigManager::ConfigManager() {}
 // ========== INICJALIZACJA ==========
 bool ConfigManager::begin() {
     Serial.println("Inicjalizacja LittleFS...");
+    
+    // ===== KROK 1: Montowanie =====
     if (!LittleFS.begin(true)) {
-        Serial.println("Błąd montowania LittleFS!");
+        Serial.println("❌ Błąd montowania LittleFS!");
+        return false;
+    }
+    Serial.println("✅ LittleFS zamontowany");
+    
+    // ===== KROK 2: Test zapisu =====
+    bool writeOk = false;
+    File test = LittleFS.open("/test.txt", "w");
+    if (test) {
+        test.println("test");
+        test.close();
+        LittleFS.remove("/test.txt");
+        writeOk = true;
+        Serial.println("✅ LittleFS działa w trybie zapisu");
+    } else {
+        Serial.println("⚠️ LittleFS jest w trybie read-only!");
+        LittleFS.end();
+        if (!LittleFS.begin(true)) {
+            Serial.println("❌ Nie udało się naprawić LittleFS!");
+            return false;
+        }
+        Serial.println("✅ LittleFS naprawiony (sformatowany)");
+    }
+    
+    // ===== KROK 3: Wczytaj config =====
+    bool mainOk = loadMainConfig();
+    if (!mainOk) {
+        Serial.println("⚠️ Brak config.json lub błąd odczytu");
+        
+        // Sprawdź czy plik istnieje
+        if (!LittleFS.exists("/config.json")) {
+            Serial.println("   config.json nie istnieje - tworzę domyślny");
+            if (!createDefaultConfig()) {
+                Serial.println("❌ Błąd tworzenia domyślnego config.json!");
+                return false;
+            }
+        } else {
+            Serial.println("   config.json istnieje ale nie można go odczytać");
+            // Spróbuj ponownie odczytać
+            if (!loadMainConfig()) {
+                Serial.println("❌ Błąd odczytu config.json");
+                return false;
+            }
+        }
+    }
+    
+    Serial.println("✅ Konfiguracja wczytana pomyślnie");
+    return true;
+}
+
+// ========== TWORZENIE DOMYŚLNEGO PLIKU KONFIGURACJI ==========
+bool ConfigManager::createDefaultConfig() {
+    DynamicJsonDocument doc(1024);
+    doc["wifi"]["ssid"] = "";
+    doc["wifi"]["pass"] = "";
+    doc["data_source"]["source"] = "http";
+    doc["http_data"]["addr"] = "http://192.168.0.251:8080/api/data";
+    
+    File file = LittleFS.open("/config.json", "w");
+    if (!file) {
+        Serial.println("❌ Nie można utworzyć config.json");
         return false;
     }
     
-    bool mainOk = loadMainConfig();
-    if (!mainOk) {
-        Serial.println("Brak config.json – używam domyślnych");
+    if (serializeJsonPretty(doc, file) == 0) {
+        file.close();
+        Serial.println("❌ Błąd zapisu JSON");
+        return false;
     }
-    
+    file.close();
+    Serial.println("✅ config.json utworzony");
     return true;
 }
 
 // ========== OBSŁUGA GŁÓWNEJ KONFIGURACJI ==========
-bool ConfigManager::loadMainConfig()
-{
+bool ConfigManager::loadMainConfig() {
     DynamicJsonDocument doc(4096);
 
-    if (!loadConfig(doc))
+    if (!loadConfig(doc)) {
+        Serial.println("❌ loadConfig() zwrócił false");
         return false;
+    }
 
     loadWifiConfig(doc);
-    loadAPConfig(doc);          // ← poprawione: doc["ap"]
+    loadAPConfig(doc);
     loadModbusConfig(doc);
     loadSettingsConfig(doc);
     loadHttpConfig(doc);
     loadDataSourceConfig(doc);
     loadNtpConfig(doc);
 
+    Serial.println("✅ loadMainConfig() zakończony");
     return true;
 }
 
@@ -77,37 +143,32 @@ bool ConfigManager::loadConfig(JsonDocument& doc)
 // ========== ZAPIS PLIKU KONFIGURACJI ==========
 bool ConfigManager::saveConfig(const JsonDocument& doc)
 {
+    // Zapisz do pliku tymczasowego
     File file = LittleFS.open("/config.tmp", "w");
-
-    if (!file)
-    {
-        Serial.println("Nie można utworzyć config.tmp");
+    if (!file) {
+        Serial.println("❌ Nie można utworzyć config.tmp");
         return false;
     }
 
-    if (serializeJsonPretty(doc, file) == 0)
-    {
-        file.close();
-        LittleFS.remove("/config.tmp");
-        Serial.println("Błąd zapisu JSON");
-        return false;
-    }
-
+    size_t written = serializeJsonPretty(doc, file);
     file.flush();
     file.close();
-
-    LittleFS.remove("/config.json");
-
-    if (LittleFS.exists("/config.json"))
-    {
-        if (!LittleFS.remove("/config.json"))
-        {
-            Serial.println("Nie można usunąć starego config.json");
-            LittleFS.remove("/config.tmp");
-            return false;
-        }
+    
+    if (written == 0) {
+        Serial.println("❌ Błąd zapisu JSON");
+        LittleFS.remove("/config.tmp");
+        return false;
     }
-    LittleFS.rename("/config.tmp", "/config.json");
+
+    // Usuń stary plik i przemianuj nowy
+    LittleFS.remove("/config.json");
+    
+    if (!LittleFS.rename("/config.tmp", "/config.json")) {
+        Serial.println("❌ Błąd rename config.tmp → config.json");
+        return false;
+    }
+    
+    Serial.println("✅ config.json zapisany");
     return true;
 }
 
@@ -338,9 +399,10 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
         U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
         U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
-        U.bojlerTmax = s["bojlerTmax"] | 80.0;
-        U.radiatorTmax = s["radiatorTmax"] | 70.0;
+        U.bojlerTmax = s["bojlerTmax"] | 80;
+        U.radiatorTmax = s["radiatorTmax"] | 70;
         U.radiatorT_critical = s["radiatorT_critical"] | false;
+        U.serwer_www_port = s["serwer_www_port"] | 80;
     }
 }
 
@@ -359,10 +421,10 @@ bool ConfigManager::saveUstawienia() {
       s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
       s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
       s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
-      s["bojlerTmax"] = U.bojlerTmax;
-      s["radiatorTmax"] = U.radiatorTmax;
+      s["bojlerTmax"] = (int)U.bojlerTmax;
+      s["radiatorTmax"] = (int)U.radiatorTmax;
       s["radiatorT_critical"] = U.radiatorT_critical;
-      s["serwer_www_port"] = 80;
+      s["serwer_www_port"] = (int)U.serwer_www_port;
   });  
 }
 

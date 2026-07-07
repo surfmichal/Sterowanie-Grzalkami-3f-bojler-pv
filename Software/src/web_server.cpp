@@ -7,20 +7,24 @@
 #include "statistics.h"
 #include "data_manager.h"
 #include "http_data_client.h"
-#include "globals.h"  
+#include "globals.h" 
+#include "heater_control.h" 
 
 // Deklaracje zewnętrzne
 extern InverterData inverterData;
 extern ModbusConfig modbusCfg;
-extern Ustawienia U;           // ← GŁÓWNA STRUKTURA KONFIGURACJI
+extern Ustawienia U;                  // ← GŁÓWNA STRUKTURA KONFIGURACJI
 extern Zmienne Z;
 extern NTPManager ntp;
 extern Logger logger;
 extern LicznikiCzasu liczniki;
 extern TemperatureFIFO tempFIFO;
-extern Temperatury T;              // 
-extern StycznikState stycznik;     // 
-extern DataSource activeDataSource;  //
+extern Temperatury T;                 // 
+extern StycznikState stycznik;        // 
+extern DataSource activeDataSource;   //
+extern HttpDataClient httpClient;     // Obiekt klienta HTTP do pobierania danych
+extern HeaterBlockFlags heaterBlocks; // Struktura przechowująca flagi blokad grzałek
+extern HeaterControl heaterControl;   // Obiekt zarządzający logiką grzałek
 
 // Zmienne symulacji
 extern bool simulationMode;               // 
@@ -46,6 +50,7 @@ void WebServerManager::begin() {
   server.on("/api/heater_config", HTTP_GET, std::bind(&WebServerManager::handleApiHeaterConfig, this));
   server.on("/api/save_wifi", HTTP_POST, std::bind(&WebServerManager::handleApiSaveWiFi, this));
   server.on("/api/save_modbus", HTTP_POST, std::bind(&WebServerManager::handleApiSaveModbus, this));
+  server.on("/api/save_http_data", HTTP_POST, std::bind(&WebServerManager::handleApiSaveHttpData, this));
   server.on("/api/save_heater", HTTP_POST, std::bind(&WebServerManager::handleApiSaveHeater, this));
   server.on("/api/restart", HTTP_POST, std::bind(&WebServerManager::handleApiRestart, this));
   server.on("/api/reset_wifi", HTTP_POST, std::bind(&WebServerManager::handleApiResetWiFi, this));
@@ -66,6 +71,7 @@ void WebServerManager::begin() {
   server.on("/api/version", HTTP_GET, std::bind(&WebServerManager::handleApiVersion, this));
   server.on("/api/save_data_source", HTTP_POST, std::bind(&WebServerManager::handleApiSaveDataSource, this));
   server.on("/api/data_source", HTTP_GET, std::bind(&WebServerManager::handleApiGetDataSource, this));
+  server.on("/api/block_status", HTTP_GET, std::bind(&WebServerManager::handleApiBlockStatus, this));
   
   server.on("/api/simulation", HTTP_GET, std::bind(&WebServerManager::handleApiSimulationGet, this));
   server.on("/api/simulation", HTTP_POST, std::bind(&WebServerManager::handleApiSimulationPost, this));
@@ -126,6 +132,7 @@ void WebServerManager::handleApiSaveLogsConfig() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
+// ========== API: POBIERZ LOGI ==========
 void WebServerManager::handleApiLogs() {
   String logs = logger.getRecentLogs(500);
   
@@ -152,6 +159,7 @@ void WebServerManager::handleApiLogs() {
   server.send(200, "application/json", response);
 }
 
+// ========== API: WYCZYŚĆ LOGI ==========
 void WebServerManager::handleApiLogsClear() {
   logger.clearLogs();
   server.send(200, "application/json", "{\"success\":true}");
@@ -198,7 +206,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
   doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
-  doc["HeaterEnabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
+  doc["Heater_enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
   doc["bojler_Tmax"] = U.bojlerTmax;
   doc["radiatorT_critical"] = U.radiatorT_critical;
   doc["radiator_Tmax"] = U.radiatorTmax;
@@ -274,21 +282,39 @@ void WebServerManager::handleApiData() {
     doc["inverterData"]["total_energy"] = inverterData.totalEnergy;
   }
   
-  // Konfiguracja Modbus
+  // Źródło danych (Modbus lub HTTP)
+  doc["data_source"] = (activeDataSource == SOURCE_MODBUS) ? "modbus" : (activeDataSource == SOURCE_HTTP) ? "http" : "none";
+
+  // Konfiguracja Modbus  
   JsonObject mbCfg = doc.createNestedObject("modbus_config");
   mbCfg["ip"] = modbusCfg.ip;
   mbCfg["port"] = modbusCfg.port;
   mbCfg["unitId"] = modbusCfg.unitId;
-  mbCfg["readInterval"] = modbusCfg.readInterval;
-  mbCfg["enabled"] = modbusCfg.enabled;
+  mbCfg["readInterval"] = modbusCfg.readInterval;  
+  mbCfg["timeout"] = modbusCfg.timeout;
+  mbCfg["maxRetries"] = modbusCfg.maxRetries;
+  mbCfg["retryDelay"] = modbusCfg.retryDelay;
+
+  //Konfiguracja HTTP Data Client
+  JsonObject httpCfg = doc.createNestedObject("http_data_config");
+  httpCfg["addr"] = httpDataCfg.addr;
+  httpCfg["interval"] = httpDataCfg.interval;
+  httpCfg["timeout"] = httpDataCfg.timeout;
+  httpCfg["maxRetries"] = httpDataCfg.maxRetries;
+  httpCfg["retryDelay"] = httpDataCfg.retryDelay;
   
   // Konfiguracja grzałek (ze struktury U)
   JsonObject heatCfg = doc.createNestedObject("heater_config");
   heatCfg["u_on"] = U.Ugrid_on;
   heatCfg["u_off"] = U.Ugrid_off;
+  heatCfg["delay_on_ms"] = U.HeaterDelay_on_ms;
   heatCfg["delay_off_ms"] = U.HeaterDelay_off_ms;
-  //heatCfg["enabled"] = heater_config.enabled;
+  heatCfg["contactor_delay_off_ms"] = U.ContactorDelay_off_ms;
+  heatCfg["enabled"] = U.HeaterEnabled;
   heatCfg["t_max"] = U.bojlerTmax;
+  heatCfg["radiatorT_critical"] = U.radiatorT_critical;
+  heatCfg["radiatorTmax"] = U.radiatorTmax;
+
   
   String response;
   serializeJson(doc, response);
@@ -300,7 +326,8 @@ void WebServerManager::handleApiStatus() {
   DynamicJsonDocument doc(512);
   
   doc["wifi_connected"] = (WiFi.status() == WL_CONNECTED);
-  doc["rssi"] = WiFi.RSSI();
+  doc["wifi_ssid"] = WiFi.SSID();
+  doc["wifi_rssi"] = WiFi.RSSI();
   doc["ip"] = wifi->getLocalIP();
   
   unsigned long uptime = millis() / 1000;
@@ -317,7 +344,9 @@ void WebServerManager::handleApiStatus() {
   doc["contactorState"] = stycznik.state;
   
   doc["temp_bojler"] = T.bojler.temperatura;
-  doc["temp_max"] = U.bojlerTmax;
+  doc["temp_bojler_max"] = U.bojlerTmax;
+  doc["temp_radiator"] = T.radiator.temperatura;
+  doc["temp_radiator_max"] = U.radiatorTmax;
   
   // ========== DODANE: WERSJA OPROGRAMOWANIA ==========
   doc["firmware_name"] = FIRMWARE_NAME;
@@ -408,6 +437,33 @@ void WebServerManager::handleApiSaveModbus() {
   modbusCfg.enabled = doc["enabled"] | true;
   
   config->saveModbusConfig();
+  
+  server.send(200, "application/json", "{\"success\":true}");
+}
+
+// ========== API: ZAPIS KONFIGURACJI POBIERANIA DANYCH Z HTTP ==========
+void WebServerManager::handleApiSaveHttpData() {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"success\":false,\"error\":\"Method not allowed\"}");
+    return;
+  }
+  
+  String body = server.arg("plain");
+  DynamicJsonDocument doc(1024);
+  DeserializationError error = deserializeJson(doc, body);
+  
+  if (error) {
+    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+    return;
+  }
+  
+  strlcpy(httpDataCfg.addr, doc["url"] | "", sizeof(httpDataCfg.addr));
+  httpDataCfg.interval = doc["interval"] | 5000; // default to 5 seconds
+  httpDataCfg.maxRetries = doc["maxRetries"] | 3; // default to 3 retries
+  httpDataCfg.retryDelay = doc["retryDelay"] | 2000; // default to 2 second
+  httpDataCfg.timeout = doc["timeout"] | 5000; // default to 5 seconds
+  
+  config->saveHttpDataConfig();
   
   server.send(200, "application/json", "{\"success\":true}");
 }
@@ -639,33 +695,58 @@ void WebServerManager::handleApiSaveDataSource() {
     return;
   }
   
-  // Zapisz źródło danych
-  String source = doc["data_source"]["source"] | "http";
-  config->saveDataSource(source.c_str());
+  // ===== JEDEN ZBIORCZY ZAPIS =====
+  bool success = config->updateConfig([&](JsonDocument& configDoc) {
+    // 1. Zaktualizuj źródło danych
+    String source = doc["data_source"]["source"] | "http";
+    if (source == "http") {
+      activeDataSource = SOURCE_HTTP;
+    } else {
+      activeDataSource = SOURCE_MODBUS;
+    }
+    configDoc["data_source"]["source"] = source;
+    
+    // 2. Zaktualizuj HTTP config
+    if (doc.containsKey("http_data")) {
+      strlcpy(httpDataCfg.addr, doc["http_data"]["addr"] | "", sizeof(httpDataCfg.addr));
+      httpDataCfg.interval    = doc["http_data"]["interval"]    | 5000;
+      httpDataCfg.timeout     = doc["http_data"]["timeout"]     | 5000;
+      httpDataCfg.maxRetries = doc["http_data"]["max_retries"] | 3;
+      httpDataCfg.retryDelay = doc["http_data"]["retry_delay"] | 1000;
+      
+      JsonObject http = configDoc["http_data"];
+      http["addr"] = httpDataCfg.addr;
+      http["interval"] = httpDataCfg.interval;
+      http["timeout"] = httpDataCfg.timeout;
+      http["max_retries"] = httpDataCfg.maxRetries;
+      http["retry_delay"] = httpDataCfg.retryDelay;
+    }
+    
+    // 3. Zaktualizuj Modbus config
+    if (doc.containsKey("modbus")) {
+      strlcpy(modbusCfg.ip, doc["modbus"]["ip"] | "192.168.20.70", sizeof(modbusCfg.ip));
+      modbusCfg.port        = doc["modbus"]["port"]        | 502;
+      modbusCfg.unitId      = doc["modbus"]["unitId"]      | 1;
+      modbusCfg.readInterval = doc["modbus"]["readInterval"] | 1000;
+      modbusCfg.timeout     = doc["modbus"]["timeout"]     | 1000;
+      modbusCfg.maxRetries = doc["modbus"]["max_retries"] | 3;
+      modbusCfg.retryDelay = doc["modbus"]["retry_delay"] | 1000;
+      
+      JsonObject modbus = configDoc["modbus"];
+      modbus["ip"] = modbusCfg.ip;
+      modbus["port"] = modbusCfg.port;
+      modbus["unitId"] = modbusCfg.unitId;
+      modbus["readInterval"] = modbusCfg.readInterval;
+      modbus["timeout"] = modbusCfg.timeout;
+      modbus["max_retries"] = modbusCfg.maxRetries;
+      modbus["retry_delay"] = modbusCfg.retryDelay;
+    }
+  });
   
-  // Zapisz HTTP config
-  if (doc.containsKey("http_data")) {
-    strlcpy(httpDataCfg.addr, doc["http_data"]["addr"] | "", sizeof(httpDataCfg.addr));
-    httpDataCfg.interval    = doc["http_data"]["interval"]    | 5000;
-    httpDataCfg.timeout     = doc["http_data"]["timeout"]     | 5000;
-    httpDataCfg.maxRetries = doc["http_data"]["max_retries"] | 3;
-    httpDataCfg.retryDelay = doc["http_data"]["retry_delay"] | 1000;
-    config->saveHttpDataConfig();
-  }
+  // Przeładuj HTTP Client
+  httpClient.reloadConfig();
   
-  // Zapisz Modbus config
-  if (doc.containsKey("modbus")) {
-    strlcpy(modbusCfg.ip, doc["modbus"]["ip"] | "192.168.20.70", sizeof(modbusCfg.ip));
-    modbusCfg.port        = doc["modbus"]["port"]        | 502;
-    modbusCfg.unitId      = doc["modbus"]["unitId"]      | 1;
-    modbusCfg.readInterval = doc["modbus"]["readInterval"] | 1000;
-    modbusCfg.timeout     = doc["modbus"]["timeout"]     | 1000;
-    modbusCfg.maxRetries = doc["modbus"]["max_retries"] | 3;
-    modbusCfg.retryDelay = doc["modbus"]["retry_delay"] | 1000;
-    config->saveModbusConfig();
-  }
-  
-  LOG_INFO("WebServer", "Źródło danych: %s", source.c_str());
+  LOG_INFO("WebServer", "Źródło danych zapisane");
   server.send(200, "application/json", "{\"success\":true}");
 }
 
@@ -699,3 +780,38 @@ void WebServerManager::handleApiSimulationPost() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
+// ========== API: STATUS BLOKAD ==========
+void WebServerManager::handleApiBlockStatus() {
+    DynamicJsonDocument doc(512);
+    
+    // Aktualizuj blokady
+    heaterControl.updateBlockFlags();
+    
+    // Kopiuj wszystkie flagi
+    doc["blocked"] = heaterBlocks.any_blocked;
+    doc["block_count"] = heaterBlocks.active_blocks_count;
+    doc["inverter_offline"] = heaterBlocks.inverter_offline;
+    doc["temp_bojler_exceeded"] = heaterBlocks.temp_bojler_exceeded;
+    doc["temp_radiator_exceeded"] = heaterBlocks.temp_radiator_exceeded;
+    doc["radiator_sensor_error"] = heaterBlocks.radiator_sensor_error;
+    doc["manual_disable"] = heaterBlocks.manual_disable;
+    doc["heater_system_disabled"] = heaterBlocks.heater_system_disabled;
+    doc["temp_bojler_warning"] = heaterBlocks.temp_bojler_warning;
+    doc["temp_radiator_warning"] = heaterBlocks.temp_radiator_warning;
+    doc["modbus_timeout"] = heaterBlocks.modbus_timeout;
+    
+    // Przyjazny opis
+    doc["reason"] = heaterControl.getBlockReason();
+    
+    // Aktualne wartości dla kontekstu
+    doc["temp_bojler"] = T.bojler.temperatura;
+    doc["temp_bojler_max"] = U.bojlerTmax;
+    doc["temp_radiator"] = T.radiator.temperatura;
+    doc["temp_radiator_max"] = U.radiatorTmax;
+    doc["inverter_connected"] = inverterData.connected;
+    doc["heater_enabled_config"] = U.HeaterEnabled;
+    
+    String response;
+    serializeJson(doc, response);
+    server.send(200, "application/json", response);
+}

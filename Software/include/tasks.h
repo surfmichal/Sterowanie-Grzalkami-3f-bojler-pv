@@ -12,7 +12,7 @@ void taskWiFiMonitor(void* parameter);
 void taskTemperature(void* parameter); 
 
 // Deklaracja funkcji uruchamiającej zadania
-void setupTasks(WiFiManager* wifi, ConfigManager* config);  // DODANE
+void setupTasks(WiFiManager* wifi, ConfigManager* config);  // 
 
 // Deklaracje extern handle (definicje w tasks.cpp)
 extern TaskHandle_t taskWiFiHandle;

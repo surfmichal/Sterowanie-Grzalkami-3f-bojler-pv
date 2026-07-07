@@ -12,6 +12,7 @@
 #include "onewire_manager.h"
 #include "http_data_client.h"
 #include "data_manager.h"
+#include "heater_control.h"
 
 DataManager dataManager;
 HttpDataClient httpClient;
@@ -27,7 +28,7 @@ TaskHandle_t taskTemperatureHandle = NULL;
 OneWireManager sensorBojler(ONE_WIRE_A_pin);
 OneWireManager sensorRadiator(ONE_WIRE_B_pin);
 
-HeaterControl heaterControl;
+extern HeaterControl heaterControl;  // Globalna instancja obiektu HeaterControl
 
 // Zmienne współdzielone między zadaniami (volatile dla bezpieczeństwa)
 volatile bool alarmTriggered = false;

@@ -280,6 +280,25 @@ bool HttpDataClient::fetchDataAsync() {
   }
 }
 
+// ========== PRZEŁADOWANIE KONFIGURACJI ==========
+void HttpDataClient::reloadConfig() {
+  // Sprawdź czy HTTP jest aktywnym źródłem
+  if (activeDataSource != SOURCE_HTTP) {
+    Serial.println("🌐 HTTP: reload pominięty - inne źródło danych");
+    return;
+  }
+
+  // Przeładuj konfigurację z globalnej struktury
+  apiUrl = String(httpDataCfg.addr);
+  fetchInterval = httpDataCfg.interval;
+  timeout = httpDataCfg.timeout;
+  maxRetries = httpDataCfg.maxRetries;
+  retryDelay = httpDataCfg.retryDelay;
+  
+  Serial.printf("🔄 HTTP Data Client przeładowany: %s (interval: %dms)\n", 
+                apiUrl.c_str(), fetchInterval);
+}
+
 String HttpDataClient::getLastError() {
   return lastError;
 }

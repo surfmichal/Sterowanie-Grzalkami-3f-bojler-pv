@@ -38,6 +38,8 @@ private:
   void startTurnOnTimer(int index);                   // Rozpocznij odliczanie do załączenia
   void cancelTurnOnTimer(int index);                  // Anuluj odliczanie do załączenia
   
+  
+
 public:
   HeaterControl();
   void begin();                                       // Inicjalizacja (przypisanie wskaźników do struktur)
@@ -52,6 +54,17 @@ public:
   
   void setDataStatus(bool connected);                 // Ustaw status połączenia danych (true=połączony, false=rozłączony)
   void printStatus();                                 // Wypisz aktualny status grzałek i stycznika na Serial
+  bool isHeaterAllowed();                             // Sprawdź czy grzałki mogą być włączone (czy nie ma blokad)
+  void updateBlockFlags();                            // Aktualizacja flag blokad w strukturze heaterBlocks
+
+  String getBlockReason();                            // Pobierz powód blokady grzałek w formie tekstowej
+  HeaterBlockFlags& getBlockFlags() { return heaterBlocks; }                                  
 };
+
+// Globalna instancja (deklaracja)
+extern HeaterControl heaterControl;
+
+// Funkcja do uzyskania wskaźnika (opcjonalnie)
+HeaterControl* getHeaterControl();
 
 #endif

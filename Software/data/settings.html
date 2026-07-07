@@ -292,18 +292,7 @@
                     document.getElementById('wifi_mask').value = data.mask || '';
                     document.getElementById('wifi_dns').value = data.dns || '';
                     toggleStaticFields();
-                });
-            
-            // Modbus
-            fetch('/api/data')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('modbus_ip').value = data.modbus_config?.ip || '192.168.1.200';
-                    document.getElementById('modbus_port').value = data.modbus_config?.port || 502;
-                    document.getElementById('modbus_unitId').value = data.modbus_config?.unitId || 1;
-                    document.getElementById('modbus_readInterval').value = data.modbus_config?.readInterval || 5000;
-                    document.getElementById('modbus_enabled').checked = data.modbus_config?.enabled !== false;                    
-                });
+                });                   
             
             // Grzałki (ze struktury U)
             fetch('/api/heater_config')
@@ -388,10 +377,11 @@
                     // HTTP
                     if (data.http_data) {
                         document.getElementById('http_addr').value = data.http_data.addr || '';
-                        document.getElementById('http_interval').value = data.http_data.interval || 5000;
-                        document.getElementById('http_timeout').value = data.http_data.timeout || 5000;
-                        document.getElementById('http_max_retries').value = data.http_data.max_retries || 3;
-                        document.getElementById('http_retry_delay').value = data.http_data.retry_delay || 1000;
+                        document.getElementById('http_interval').value = data.http_data.interval || 0;
+                        document.getElementById('http_timeout').value = data.http_data.timeout || 0;
+                        document.getElementById('http_max_retries').value = data.http_data.max_retries || 0;
+                        document.getElementById('http_retry_delay').value = data.http_data.retry_delay || 0;
+                        
                     }
 
                     // Modbus

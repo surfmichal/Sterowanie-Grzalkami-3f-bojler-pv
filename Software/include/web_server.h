@@ -23,6 +23,7 @@ private:
   //void handleApiSaveConfig();  // NOWA: zapis całej konfiguracji
   void handleApiSaveWiFi();    // NOWA: zapis WiFi
   void handleApiSaveModbus();  // NOWA: zapis Modbus
+  void handleApiSaveHttpData(); // NOWA: zapis parametrów pobierania danych z HTTP
   void handleApiSaveHeater();  // NOWA: zapis ustawień grzałek
   void handleApiHeaterConfig(); 
   void handleApiRestart();
@@ -48,6 +49,7 @@ private:
   void handleApiTemperatures();  
   void handleApiSaveDataSource();
   void handleApiGetDataSource();
+  void handleApiBlockStatus();
   
 public:
   WebServerManager(ConfigManager* cfg, WiFiManager* wifiMgr);

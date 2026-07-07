@@ -15,8 +15,7 @@ class ConfigManager
     // Nie potrzebujemy już wifiConfig, bo używamy globalnej wifiCfg
     
     bool loadConfig(JsonDocument& doc);
-    bool saveConfig(const JsonDocument& doc);
-    bool updateConfig(std::function<void(JsonDocument&)> updater);
+    bool saveConfig(const JsonDocument& doc);    
 
     void loadWifiConfig(JsonDocument& doc);
     void loadAPConfig(JsonDocument& doc);
@@ -25,6 +24,7 @@ class ConfigManager
     void loadSettingsConfig(JsonDocument& doc);
     void loadNtpConfig(JsonDocument& doc);
     void loadDataSourceConfig(JsonDocument& doc);
+    bool createDefaultConfig();
     
   public:
     ConfigManager();
@@ -38,6 +38,8 @@ class ConfigManager
     bool saveUstawienia();
     bool saveDataSource();
     bool saveNtpConfig();
+
+    bool updateConfig(std::function<void(JsonDocument&)> updater);
 
     bool saveAPConfig(const char* ssid, const char* pass, 
                       const char* ip = "192.168.4.1", bool active = true);

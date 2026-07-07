@@ -20,6 +20,7 @@ HeaterState heater1_state = {false, 0, 0, false, false};
 HeaterState heater2_state = {false, 0, 0, false, false};
 HeaterState heater3_state = {false, 0, 0, false, false};
 StycznikState stycznik = {false, false, 0, false, false};
+HeaterBlockFlags heaterBlocks = {0};
 
 CzasNTP czasNTP = {0, 0, 0, 0, 0, 0, 0, 0, 0, false};
 LicznikiCzasu liczniki = {0};

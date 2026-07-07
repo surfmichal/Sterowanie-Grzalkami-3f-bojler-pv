@@ -5,6 +5,7 @@
 #include <esp_task_wdt.h>
 #include "freertos/semphr.h"
 
+
 // ========== STEROWANIE (odwrócona logika) ==========
 #define ON  LOW      // LOW = załączone (aktywne)
 #define OFF HIGH     // HIGH = wyłączone
@@ -211,6 +212,28 @@ enum DataSource : uint8_t {
   SOURCE_NONE = 2
 };
 
+// ========== SYSTEM BLOKAD GRZAŁEK ==========
+struct HeaterBlockFlags {
+    // Blokady krytyczne (wyłączają grzałki)
+    bool inverter_offline;        // Brak danych z inwertera
+    bool temp_bojler_exceeded;  // Temperatura bojlera >= max
+    bool temp_bojler_sensor_error; // Czujnik bojlera nie działa 
+    bool temp_radiator_exceeded; // Temperatura radiatora >= max
+    bool radiator_sensor_error; // Czujnik radiatora nie działa (jeśli krytyczny)
+    bool manual_disable;        // Ręczne wyłączenie przez użytkownika
+    bool heater_system_disabled; // System grzania wyłączony w config
+    
+    // Ostrzeżenia (nie blokują, tylko informują)
+    bool temp_bojler_warning;   // Temperatura bojlera blisko max
+    bool temp_radiator_warning; // Temperatura radiatora blisko max
+    bool modbus_timeout;        // Modbus nie odpowiada (ale jeszcze nie offline)
+    
+    // Informacje dodatkowe
+    bool any_blocked;           // Czy jakakolwiek blokada jest aktywna
+    uint8_t active_blocks_count; // Liczba aktywnych blokad
+    unsigned long last_update;  // Czas ostatniej aktualizacji
+};
+
 /// ========== LICZNIKI CZASU PRACY ==========
 struct LicznikiCzasu {
   // Dzienny czas pracy (w sekundach) – resetowane codziennie
@@ -311,9 +334,11 @@ extern NtpConfig ntpCfg;
 extern Ustawienia  U;
 extern Zmienne     Z;
 extern Temperatury T;
+//extern HeaterControl heaterControl;
 extern HeaterState heater1_state;
 extern HeaterState heater2_state;
 extern HeaterState heater3_state;
+extern HeaterBlockFlags heaterBlocks;
 extern CzasNTP czasNTP;
 extern StycznikState stycznik;
 extern TemperatureFIFO tempFIFO;

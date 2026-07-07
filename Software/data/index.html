@@ -352,13 +352,24 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log('Status data:', data);
-                    document.getElementById('wifiStatus').innerHTML = data.wifi_connected ? '✅ Połączone' : '❌ Rozłączone';
+                    
+                    // 🔥 ZMIANA: WiFi z SSID
+                    const wifiStatus = document.getElementById('wifiStatus');
+                    if (wifiStatus) {
+                        if (data.wifi_connected) {
+                            const ssid = data.wifi_ssid || 'WiFi';
+                            wifiStatus.innerHTML = `✅ ${ssid}`;
+                        } else {
+                            wifiStatus.innerHTML = '❌ Rozłączone';
+                        }
+                    }
+                    
                     document.getElementById('ip').innerHTML = data.ip || '---';
                     document.getElementById('uptime').innerHTML = data.uptime || '---';
                     document.getElementById('freeHeap').innerHTML = data.free_heap || '---';
 
                     // Siła sygnału WiFi
-                    const rssi = data.rssi;
+                    const rssi = data.rssi || data.wifi_rssi;  // obsługa obu nazw
                     const rssiSpan = document.getElementById('rssi');
                     if (rssiSpan && rssi !== undefined) {
                         let icon, color;

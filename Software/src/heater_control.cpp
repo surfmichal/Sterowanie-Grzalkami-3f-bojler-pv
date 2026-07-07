@@ -7,7 +7,9 @@
 extern StycznikState stycznik;
 extern Zmienne Z;
 extern InverterData inverterData;
-extern DataSource activeDataSource;  // ← DODAJ
+extern DataSource activeDataSource; 
+
+HeaterControl heaterControl;  // Globalna instancja obiektu HeaterControl
 
 HeaterControl::HeaterControl() {
   heater_states[0] = &heater1_state;
@@ -77,24 +79,24 @@ bool HeaterControl::isTemperatureSafe() {
     return false;
   }
   
-  if (T.bojler.temperatura >= U.bojlerTmax) {
+  if (T.bojler.temperatura >= (float)U.bojlerTmax) {
     LOG_ERROR_DEDUP("HeaterControl", "Temperatura bojlera %.1f°C >= %.1f°C - BLOKADA!", 
-                    T.bojler.temperatura, U.bojlerTmax);
+                    T.bojler.temperatura, (float)U.bojlerTmax);
     return false;
   }
   
   // === RADIATOR ===
   if (U.radiatorT_critical) {
     if (T.radiator.ok) {
-      if (T.radiator.temperatura >= U.radiatorTmax) {
+      if (T.radiator.temperatura >= (float)U.radiatorTmax) {
         LOG_ERROR_DEDUP("HeaterControl", "Temperatura radiatora %.1f°C >= %.1f°C - BLOKADA!", 
-                        T.radiator.temperatura, U.radiatorTmax);
+                        T.radiator.temperatura, (float)U.radiatorTmax);
         return false;
       }
       
-      if (T.radiator.ok && T.radiator.temperatura >= U.radiatorTmax - 5.0) {
+      if (T.radiator.ok && T.radiator.temperatura >= (float)U.radiatorTmax - 5.0) {
         LOG_WARN_DEDUP("HeaterControl", "Ostrzeżenie: radiator %.1f°C (blisko limitu %.1f°C)", 
-                      T.radiator.temperatura, U.radiatorTmax);
+                      T.radiator.temperatura, (float)U.radiatorTmax);
       }
     } else {
       LOG_ERROR_DEDUP("HeaterControl", "Czujnik radiatora nie działa i jest KRYTYCZNY - BLOKADA!");
@@ -106,6 +108,10 @@ bool HeaterControl::isTemperatureSafe() {
 
 // Natychmiastowe załączenie gdy napięcie >= U_on
 bool HeaterControl::shouldTurnOn(float voltage) {
+  if (!isHeaterAllowed()) {
+        return false;
+    }
+
   if (!U.HeaterEnabled) return false;  
   if (!isModbusDataValid()) return false;
   if (!isTemperatureSafe()) return false;
@@ -611,4 +617,113 @@ void HeaterControl::printStatus() {
                 activeDataSource == SOURCE_MODBUS ? "Modbus" : 
                   (activeDataSource == SOURCE_HTTP ? "HTTP" : "BRAK"),
                 inverterData.connected ? "OK" : "BRAK");
+}
+
+// ========== AKTUALIZACJA SYSTEMU BLOKAD ==========
+void HeaterControl::updateBlockFlags() {
+    // Resetuj wszystkie flagi (oprócz manual_disable i heater_system_disabled)
+    bool manualDisable = heaterBlocks.manual_disable;
+    bool systemDisabled = heaterBlocks.heater_system_disabled;
+    
+    memset(&heaterBlocks, 0, sizeof(heaterBlocks));
+    
+    // Przywróć flagi ręczne
+    heaterBlocks.manual_disable = manualDisable;
+    heaterBlocks.heater_system_disabled = systemDisabled;
+    
+    // === BLOKADY KRYTYCZNE ===
+    
+    // 1. Brak danych z inwertera (Modbus lub HTTP)
+    if (!inverterData.connected) {
+        heaterBlocks.inverter_offline = true;
+        Serial.println("🔴 Blokada: BRAK DANYCH Z INWERTERA");
+    }
+    
+    // 2. Temperatura bojlera
+    if (T.bojler.ok) {
+        if (T.bojler.temperatura >= U.bojlerTmax) {
+            heaterBlocks.temp_bojler_exceeded = true;
+            Serial.printf("🔴 Blokada: TEMPERATURA BOJLERA %.1f°C >= MAX %d°C\n", 
+                          T.bojler.temperatura, U.bojlerTmax);
+        } else if (T.bojler.temperatura >= U.bojlerTmax - 5.0) {
+            heaterBlocks.temp_bojler_warning = true;
+            Serial.printf("🟡 Ostrzeżenie: Temperatura bojlera %.1f°C blisko max %d°C\n", 
+                          T.bojler.temperatura, U.bojlerTmax);
+        }
+    } else {
+        // Czujnik bojlera nie działa - blokada        
+        heaterBlocks.temp_bojler_sensor_error = true;
+        Serial.println("🔴 Blokada: CZUJNIK BOJLERA NIE DZIAŁA (krytyczny)");
+    }
+    
+    // 3. Temperatura radiatora
+    if (T.radiator.ok) {
+        if (T.radiator.temperatura >= U.radiatorTmax) {
+            heaterBlocks.temp_radiator_exceeded = true;
+            Serial.printf("🔴 Blokada: TEMPERATURA RADIATORA %.1f°C >= MAX %d°C\n", 
+                          T.radiator.temperatura, U.radiatorTmax);
+        } else if (T.radiator.temperatura >= U.radiatorTmax - 5.0) {
+            heaterBlocks.temp_radiator_warning = true;
+            Serial.printf("🟡 Ostrzeżenie: Temperatura radiatora %.1f°C blisko max %d°C\n", 
+                          T.radiator.temperatura, U.radiatorTmax);
+        }
+    } else if (U.radiatorT_critical) {
+        // Czujnik radiatora nie działa i jest krytyczny
+        heaterBlocks.radiator_sensor_error = true;
+        heaterBlocks.temp_radiator_exceeded = true;
+        Serial.println("🔴 Blokada: CZUJNIK RADIATORA NIE DZIAŁA (krytyczny)");
+    }
+    
+    // 4. System grzania wyłączony w config
+    if (!U.HeaterEnabled) {
+        heaterBlocks.heater_system_disabled = true;
+        Serial.println("🔴 Blokada: SYSTEM GRZANIA WYŁĄCZONY W CONFIG");
+    }
+    
+    // 5. Sprawdź czy jakakolwiek blokada jest aktywna
+    heaterBlocks.any_blocked = false;
+    heaterBlocks.active_blocks_count = 0;
+    
+    // Sprawdź wszystkie flagi blokad
+    if (heaterBlocks.inverter_offline) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.temp_bojler_exceeded) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.temp_bojler_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.temp_radiator_exceeded) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.radiator_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.manual_disable) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.heater_system_disabled) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    
+    heaterBlocks.last_update = millis();
+    
+    // Podsumowanie
+    if (heaterBlocks.any_blocked) {
+        Serial.printf("🔒 System BLOKOWANY (%d blokad)\n", heaterBlocks.active_blocks_count);
+    } else {
+        Serial.println("✅ System ODBLOKOWANY - grzałki mogą działać");
+    }
+}
+
+// ========== SPRAWDŹ CZY GRZAŁKI MOGĄ SIĘ ZAŁĄCZYĆ ==========
+bool HeaterControl::isHeaterAllowed() {
+    // Aktualizuj blokady
+    updateBlockFlags();
+    
+    // Jeśli jakakolwiek blokada jest aktywna, grzałki nie mogą się załączyć
+    return !heaterBlocks.any_blocked;
+}
+
+// ========== POBIERZ TEKSTOWY OPIS BLOKAD ==========
+String HeaterControl::getBlockReason() {
+    String reason = "";
+    
+    if (heaterBlocks.inverter_offline) reason += "❌ Brak danych z inwertera; ";
+    if (heaterBlocks.temp_bojler_exceeded) reason += "❌ Temp. bojlera za wysoka; ";
+    if (heaterBlocks.temp_radiator_exceeded) reason += "❌ Temp. radiatora za wysoka; ";
+    if (heaterBlocks.radiator_sensor_error) reason += "❌ Czujnik radiatora nie działa; ";
+    if (heaterBlocks.manual_disable) reason += "❌ Ręczne wyłączenie; ";
+    if (heaterBlocks.heater_system_disabled) reason += "❌ System wyłączony w config; ";
+    
+    if (reason.length() == 0) reason = "✅ Brak blokad";
+    
+    return reason;
 }

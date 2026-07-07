@@ -3,3 +3,7 @@
 - sprawdzić działanie liczników
 - sprawdzić działanie blokad
 
+- zrobić wybór odczytu danych 
+    - html
+    - modbus
+

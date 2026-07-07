@@ -78,8 +78,8 @@ struct Ustawienia {
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
   uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
-  float bojlerTmax;             // ← float
-  float radiatorTmax;           // ← float 
+  int8_t bojlerTmax;             // ← int8
+  int8_t radiatorTmax;           // ← int8 
   bool radiatorT_critical;      // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
   uint8_t serwer_www_port;      // ← uint8_t lub int
 };
@@ -178,6 +178,9 @@ struct ModbusConfig {
   uint16_t port;           // Port (domyślnie 502)
   uint8_t unitId;          // ID urządzenia (domyślnie 255 dla Sofar)
   uint16_t readInterval;   // Interwał odczytu (ms)
+  uint16_t timeout;        //
+  uint16_t maxRetries;    //
+  uint16_t retryDelay;    //
   bool enabled;            // Czy Modbus jest aktywny
 };
 
@@ -187,8 +190,8 @@ struct HttpDataConfig {
   char addr[100];
   uint16_t interval;      // ms
   uint16_t timeout;       // ms
-  uint8_t max_retries;
-  uint16_t retry_delay;   // ms
+  uint8_t maxRetries;
+  uint16_t retryDelay;   // ms
 };
 
 
@@ -288,14 +291,13 @@ extern Bledy       E_byle;
 extern Alarmy      A_teraz;
 extern Alarmy      A_byle;
 
-extern WifiConfig  wifi_ust;
-
+extern APConfig    apConfig;
+extern WifiConfig  wifiCfg;
 extern InverterData inverterData; 
 extern ModbusConfig modbusCfg;
-extern HttpDataConfig http_data_cfg;
+extern HttpDataConfig httpDataCfg;
 extern DataSource activeDataSource; 
 
-extern APConfig    ap_config;
 extern Ustawienia  U;
 extern Zmienne     Z;
 extern Temperatury T;

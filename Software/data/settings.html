@@ -149,33 +149,97 @@
             </form>
         </div>
         
-        <!-- SEKCJA: Modbus -->
+        <!-- SEKCJA: Źródło danych -->
         <div class='card'>
-            <h3>🔌 Konfiguracja Modbus TCP</h3>
-            <form id='modbusForm'>
+            <h3>📡 Źródło danych falownika</h3>
+            
+            <div class='form-group'>
+                <label>Wybierz źródło danych</label>
+                <select id='data_source' onchange='toggleDataSource()'>
+                    <option value='http'>HTTP (Python serwer)</option>
+                    <option value='modbus'>Modbus TCP (bezpośrednio)</option>
+                </select>
+            </div>
+            
+            <!-- Formularz HTTP -->
+            <div id='httpFields'>
+                <hr>
+                <h4 style='color:#555; margin-top:0;'>🌐 Ustawienia HTTP</h4>
+                <div class='form-group'>
+                    <label>Adres URL API</label>
+                    <input type='text' id='http_addr' placeholder='http://192.168.2.254:8080/api/data'>
+                </div>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Interwał odczytu (ms)</label>
+                        <input type='number' id='http_interval' value='5000' min='1000' step='500'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Timeout (ms)</label>
+                        <input type='number' id='http_timeout' value='5000' min='500' step='500'>
+                    </div>
+                </div>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Max retries</label>
+                        <input type='number' id='http_max_retries' value='3' min='1' max='10'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Retry delay (ms)</label>
+                        <input type='number' id='http_retry_delay' value='1000' min='500' step='500'>
+                    </div>
+                </div>
+                <div class='info'>
+                    ℹ️ ESP32 pobiera dane z serwera Python przez HTTP.<br>
+                    Podaj pełny adres URL endpointu API.
+                </div>
+            </div>
+            
+            <!-- Formularz Modbus -->
+            <div id='modbusFields' style='display:none;'>
+                <hr>
+                <h4 style='color:#555; margin-top:0;'>🔌 Ustawienia Modbus TCP</h4>
                 <div class='form-group'>
                     <label>Adres IP falownika</label>
-                    <input type='text' id='modbus_ip' placeholder='192.168.1.200'>
+                    <input type='text' id='modbus_ip' placeholder='192.168.20.70'>
                 </div>
-                <div class='form-group'>
-                    <label>Port</label>
-                    <input type='number' id='modbus_port' value='502' min='1' max='65535'>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Port</label>
+                        <input type='number' id='modbus_port' value='502' min='1' max='65535'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Unit ID</label>
+                        <input type='number' id='modbus_unitId' value='1' min='1' max='255'>
+                    </div>
                 </div>
-                <div class='form-group'>
-                    <label>Unit ID</label>
-                    <input type='number' id='modbus_unitId' value='1' min='1' max='255'>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Interwał odczytu (ms)</label>
+                        <input type='number' id='modbus_readInterval' value='1000' min='500' step='500'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Timeout (ms)</label>
+                        <input type='number' id='modbus_timeout' value='1000' min='500' step='500'>
+                    </div>
                 </div>
-                <div class='form-group'>
-                    <label>Interwał odczytu (ms)</label>
-                    <input type='number' id='modbus_readInterval' value='5000' min='1000' step='1000'>
+                <div class='row'>
+                    <div class='form-group'>
+                        <label>Max retries</label>
+                        <input type='number' id='modbus_max_retries' value='3' min='1' max='10'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Retry delay (ms)</label>
+                        <input type='number' id='modbus_retry_delay' value='1000' min='500' step='500'>
+                    </div>
                 </div>
-                <div class='form-group'>
-                    <label class='checkbox-group'>
-                        <input type='checkbox' id='modbus_enabled' checked> Modbus aktywny
-                    </label>
+                <div class='info'>
+                    ℹ️ ESP32 łączy się bezpośrednio z falownikiem przez Modbus TCP.<br>
+                    Upewnij się że falownik jest dostępny w sieci lokalnej.
                 </div>
-                <button type='button' onclick='saveModbus()'>💾 Zapisz Modbus</button>
-            </form>
+            </div>
+            
+            <button type='button' onclick='saveDataSource()'>💾 Zapisz źródło danych</button>
         </div>
         
         <!-- SEKCJA: LOGI -->
@@ -261,6 +325,7 @@
             
             // Konfiguracja logów
             loadLogsConfig();
+            loadDataSource();
         }
         
         function toggleStaticFields() {
@@ -305,17 +370,68 @@
                     });
             }
         }
-        
-        function saveModbus() {
+
+        function toggleDataSource() {
+            const source = document.getElementById('data_source').value;
+            document.getElementById('httpFields').style.display = source === 'http' ? 'block' : 'none';
+            document.getElementById('modbusFields').style.display = source === 'modbus' ? 'block' : 'none';
+        }
+
+        function loadDataSource() {
+            fetch('/api/data_source')
+                .then(response => response.json())
+                .then(data => {
+                    const source = data.data_source?.source || 'http';
+                    document.getElementById('data_source').value = source;
+                    toggleDataSource();
+
+                    // HTTP
+                    if (data.http_data) {
+                        document.getElementById('http_addr').value = data.http_data.addr || '';
+                        document.getElementById('http_interval').value = data.http_data.interval || 5000;
+                        document.getElementById('http_timeout').value = data.http_data.timeout || 5000;
+                        document.getElementById('http_max_retries').value = data.http_data.max_retries || 3;
+                        document.getElementById('http_retry_delay').value = data.http_data.retry_delay || 1000;
+                    }
+
+                    // Modbus
+                    if (data.modbus) {
+                        document.getElementById('modbus_ip').value = data.modbus.ip || '';
+                        document.getElementById('modbus_port').value = data.modbus.port || 502;
+                        document.getElementById('modbus_unitId').value = data.modbus.unitId || 1;
+                        document.getElementById('modbus_readInterval').value = data.modbus.readInterval || 1000;
+                        document.getElementById('modbus_timeout').value = data.modbus.timeout || 1000;
+                        document.getElementById('modbus_max_retries').value = data.modbus.max_retries || 3;
+                        document.getElementById('modbus_retry_delay').value = data.modbus.retry_delay || 1000;
+                    }
+                })
+                .catch(err => console.error('Błąd ładowania źródła danych:', err));
+        }
+
+        function saveDataSource() {
+            const source = document.getElementById('data_source').value;
+
             const data = {
-                ip: document.getElementById('modbus_ip').value,
-                port: parseInt(document.getElementById('modbus_port').value),
-                unitId: parseInt(document.getElementById('modbus_unitId').value),
-                readInterval: parseInt(document.getElementById('modbus_readInterval').value),
-                enabled: document.getElementById('modbus_enabled').checked
+                data_source: { source: source },
+                http_data: {
+                    addr: document.getElementById('http_addr').value,
+                    interval: parseInt(document.getElementById('http_interval').value),
+                    timeout: parseInt(document.getElementById('http_timeout').value),
+                    max_retries: parseInt(document.getElementById('http_max_retries').value),
+                    retry_delay: parseInt(document.getElementById('http_retry_delay').value)
+                },
+                modbus: {
+                    ip: document.getElementById('modbus_ip').value,
+                    port: parseInt(document.getElementById('modbus_port').value),
+                    unitId: parseInt(document.getElementById('modbus_unitId').value),
+                    readInterval: parseInt(document.getElementById('modbus_readInterval').value),
+                    timeout: parseInt(document.getElementById('modbus_timeout').value),
+                    max_retries: parseInt(document.getElementById('modbus_max_retries').value),
+                    retry_delay: parseInt(document.getElementById('modbus_retry_delay').value)
+                }
             };
-            
-            fetch('/api/save_modbus', {
+
+            fetch('/api/save_data_source', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
@@ -323,10 +439,15 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    showSuccess('Konfiguracja Modbus zapisana!');
+                    showSuccess('Źródło danych zapisane! ESP restartuje...');
+                    setTimeout(() => location.reload(), 3000);
                 } else {
-                    showError('Błąd zapisu Modbus');
+                    showError('Błąd zapisu: ' + (result.error || 'nieznany'));
                 }
+            })
+            .catch(err => {
+                console.error('Błąd:', err);
+                showError('Błąd komunikacji z ESP32');
             });
         }
         

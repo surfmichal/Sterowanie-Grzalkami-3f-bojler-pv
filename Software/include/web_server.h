@@ -46,6 +46,8 @@ private:
   void handleApiHeaterEnable();
   void handleApiHeaterStatus();
   void handleApiTemperatures();  
+  void handleApiSaveDataSource();
+  void handleApiGetDataSource();
   
 public:
   WebServerManager(ConfigManager* cfg, WiFiManager* wifiMgr);

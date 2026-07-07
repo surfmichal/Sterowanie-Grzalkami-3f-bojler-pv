@@ -15,213 +15,202 @@ ConfigManager::ConfigManager() {
 }
 
 bool ConfigManager::begin() {
-  Serial.println("Inicjalizacja LittleFS...");
-  if (!LittleFS.begin(true)) {
-    Serial.println("Błąd montowania LittleFS!");
-    return false;
-  }
-  
-  // Wczytaj główną konfigurację
-  bool mainOk = loadMainConfig();
-  if (!mainOk) {
-    Serial.println("Brak config.json");
-    // saveWifiConfig("", "", "", "", "", "", true, true);
-  }
-  
-  // Wczytaj konfigurację AP
-  bool apOk = loadWlanConfig();
-  if (!apOk) {
-    Serial.println("Brak wlan.json, tworzę domyślny...");
-    saveAPConfig("ESP_Config", "", true);
-  }
-  
-  return mainOk || apOk;
+    Serial.println("Inicjalizacja LittleFS...");
+    if (!LittleFS.begin(true)) {
+        Serial.println("Błąd montowania LittleFS!");
+        return false;
+    }
+    
+    bool mainOk = loadMainConfig();  // ← ładuje WiFi, Modbus, Ustawienia, http_data, data_source
+    if (!mainOk) {
+        Serial.println("Brak config.json – używam domyślnych");
+    }
+    
+    bool apOk = loadWlanConfig();
+    if (!apOk) {
+        Serial.println("Brak wlan.json – tworzę domyślny");
+        saveAPConfig("ESP_Config", "", true);
+    }
+    
+    return true;  // ← zawsze true jeśli LittleFS działa
 }
 
 // ========== OBSŁUGA GŁÓWNEJ KONFIGURACJI ==========
-bool ConfigManager::loadMainConfig() {
-  File file = LittleFS.open(mainConfigPath, "r");
-  if (!file) {
-    Serial.println("Brak pliku config.json");
-    return false;
-  }
-  
-  String content = file.readString();
-  file.close();
-  
-  DynamicJsonDocument doc(4096);
-  DeserializationError error = deserializeJson(doc, content);
-  
-  if (error) {
-    Serial.print("Błąd parsowania JSON: ");
-    Serial.println(error.c_str());
-    return false;
-  }
-  
-  JsonObject wifi = doc["wifi"];
-  
-  // Odczyt danych WiFi
-  strlcpy(wifiConfig.ssid, wifi["ssid"] | "", sizeof(wifiConfig.ssid));
-  strlcpy(wifiConfig.pass, wifi["pass"] | "", sizeof(wifiConfig.pass));
-  strlcpy(wifiConfig.ip, wifi["ip"] | "", sizeof(wifiConfig.ip));
-  strlcpy(wifiConfig.gate, wifi["gate"] | "", sizeof(wifiConfig.gate));
-  strlcpy(wifiConfig.mask, wifi["mask"] | "", sizeof(wifiConfig.mask));
-  strlcpy(wifiConfig.dns, wifi["dns"] | "", sizeof(wifiConfig.dns));
-  
-  // Odczyt DHCP
-  if (wifi.containsKey("dhcp")) {
-    if (wifi["dhcp"].is<bool>()) {
-      wifiConfig.dhcp = wifi["dhcp"].as<bool>();
-    } else if (wifi["dhcp"].is<const char*>()) {
-      String dhcpStr = wifi["dhcp"].as<const char*>();
-      wifiConfig.dhcp = (dhcpStr == "true" || dhcpStr == "1" || dhcpStr == "True");
-    } else if (wifi["dhcp"].is<int>()) {
-      wifiConfig.dhcp = wifi["dhcp"].as<int>() != 0;
-    } else {
-      wifiConfig.dhcp = wifi["dhcp"] | true;
-    }
-  } else {
-    Serial.println("  dhcp NIE istnieje w JSON - używam domyślnego true");
-    wifiConfig.dhcp = true;
-  }
-  
-  // Odczyt active
-  wifiConfig.active = wifi["active"] | true;
-  
-  
-  // ===== SEKCJA WCZYTYWANIA USTAWIENIA =====
-  JsonObject Ustawienia = doc["Ustawienia"];
-  if (Ustawienia) {
-    // Sekcja istnieje - odczytaj wartości
-    U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
-    U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
-    U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
-    U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
-    U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
-    U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
-    U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
-    U.radiatorTmax = Ustawienia["radiatorTmax"] | 60.0;
-    U.radiatorT_critical = Ustawienia["radiatorT_critical"] | true;
-    
-    Serial.println("✅ Odczytano ustawienia z sekcji 'Ustawienia':");
-    Serial.printf("   HeaterEnabled: %s\n", U.HeaterEnabled ? "true" : "false");
-    Serial.printf("   Ugrid_on: %.1f V\n", U.Ugrid_on);
-    Serial.printf("   Ugrid_off: %.1f V\n", U.Ugrid_off);
-    Serial.printf("   HeaterDelay_on_ms: %d ms\n", U.HeaterDelay_on_ms);
-    Serial.printf("   HeaterDelay_off_ms: %d ms\n", U.HeaterDelay_off_ms);
-    Serial.printf("   ContactorDelay_off_ms: %d ms\n", U.ContactorDelay_off_ms);
-    Serial.printf("   bojlerTmax: %.1f °C\n", U.bojlerTmax);
-    Serial.printf("   radiatorTmax: %.1f °C\n", U.radiatorTmax);
-    Serial.printf("   radiatorT_critical: %s\n", U.radiatorT_critical ? "true" : "false");
-  } else {
-    // Sekcja nie istnieje - użyj domyślnych
-    Serial.println("⚠️ Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
-    U.HeaterEnabled = true;
-    U.Ugrid_on = 253.0;
-    U.Ugrid_off = 250.0;
-    U.HeaterDelay_on_ms = 1000;
-    U.HeaterDelay_off_ms = 5000;
-    U.ContactorDelay_off_ms = 5000;
-    U.bojlerTmax = 80.0;
-    U.radiatorT_critical = true;
-    U.radiatorTmax = 60.0;
-  }
+bool ConfigManager::loadMainConfig()
+{
+    DynamicJsonDocument doc(4096);
 
-  // ===== SEKCJA ŹRÓDŁA DANYCH =====
-  JsonObject dataSource = doc["data_source"];
-  String source = dataSource["source"] | "modbus";  // domyślnie modbus
+    if (!loadConfig(doc))
+        return false;
 
-  if (source == "http") {
-    activeDataSource = SOURCE_HTTP;
-    Serial.println("📡 Źródło danych: HTTP");
-  } else if (source == "modbus") {
-    activeDataSource = SOURCE_MODBUS;
-    Serial.println("📡 Źródło danych: Modbus TCP");
-  } else {
-    activeDataSource = SOURCE_NONE;
-    Serial.println("📡 Źródło danych: BRAK");
-  }
+    loadWifiConfig(doc);
+    loadModbusConfig(doc);
+    loadSettingsConfig(doc);
+    loadHttpConfig(doc);
+    loadDataSourceConfig(doc);
+    loadNtpConfig(doc);
 
-  // ===== SEKCJA HTTP DATA (DODAJ) =====
-  JsonObject httpData = doc["http_data"];  
-  if (httpData) {
-    strlcpy(http_data_cfg.addr, httpData["addr"] | "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
-    http_data_cfg.interval = httpData["interval"] | 5000;
-    http_data_cfg.timeout = httpData["timeout"] | 5000;
-    http_data_cfg.max_retries = httpData["max_retries"] | 3;
-    http_data_cfg.retry_delay = httpData["retry_delay"] | 1000;
-
-    Serial.println("📋 Odczytano konfigurację HTTP Data:");
-    Serial.printf("   addr: %s\n", http_data_cfg.addr);
-    Serial.printf("   interval: %d ms\n", http_data_cfg.interval);
-    Serial.printf("   timeout: %d ms\n", http_data_cfg.timeout);
-  } else {
-    Serial.println("⚠️ Brak sekcji 'http_data' w config.json - używam domyślnych wartości");
-    // Ustaw domyślne wartości
-    strlcpy(http_data_cfg.addr, "http://192.168.0.251:8080/api/data", sizeof(http_data_cfg.addr));
-    http_data_cfg.interval = 5000;
-    http_data_cfg.timeout = 5000;
-    http_data_cfg.max_retries = 3;
-    http_data_cfg.retry_delay = 1000;
-  } 
-
-  // ========== ODCZYT KONFIGURACJI MODBUS ==========
-  JsonObject modbus = doc["modbus"];
-  if (modbus) {
-    strlcpy(modbusCfg.ip, modbus["ip"] | "", sizeof(modbusCfg.ip));
-    modbusCfg.port = modbus["port"] | 502;
-    modbusCfg.unitId = modbus["unitId"] | 1;
-    modbusCfg.readInterval = modbus["readInterval"] | 5000;    
- 
-    Serial.println("📋 Odczytano konfigurację Modbus z config.json:");    
-    Serial.printf("   ip: %s\n", modbusCfg.ip);
-    Serial.printf("   port: %d\n", modbusCfg.port);
-    Serial.printf("   unitId: %d\n", modbusCfg.unitId);
-    Serial.printf("   readInterval: %d\n", modbusCfg.readInterval);
-  } else {
-    Serial.println("⚠️ Brak sekcji 'modbus' w config.json - używam domyślnych wartości");
-    // Ustaw domyślne wartości
-    strcpy(modbusCfg.ip, "192.168.20.70");
-    modbusCfg.port = 502;
-    modbusCfg.unitId = 1;
-    modbusCfg.readInterval = 5000;
-    modbusCfg.enabled = false;
-  }
-
-  return true;
+    return true;
 }
 
-bool ConfigManager::saveMainConfig() {
-  Serial.println("🔴🔴🔴 UWAGA! saveMainConfig() ZAPISUJE config.json!");
-  File file = LittleFS.open(mainConfigPath, "w");
-  if (!file) {
-    Serial.println("Błąd otwarcia config.json do zapisu");
-    return false;
-  }
-  
-  DynamicJsonDocument doc(1024);
-  doc["wifi"]["ssid"] = wifiConfig.ssid;
-  doc["wifi"]["pass"] = wifiConfig.pass;
-  doc["wifi"]["ip"] = wifiConfig.ip;
-  doc["wifi"]["gate"] = wifiConfig.gate;
-  doc["wifi"]["mask"] = wifiConfig.mask;
-  doc["wifi"]["dns"] = wifiConfig.dns;
-  doc["wifi"]["dhcp"] = wifiConfig.dhcp;
-  doc["wifi"]["active"] = wifiConfig.active;
+bool ConfigManager::loadConfig(JsonDocument& doc)
+{
+    File file = LittleFS.open("/config.json", "r");
 
-  doc["modbus"]["ip"] = modbusCfg.ip;
-  doc["modbus"]["port"] = modbusCfg.port;
-  doc["modbus"]["unitId"] = modbusCfg.unitId;
-  doc["modbus"]["readInterval"] = modbusCfg.readInterval;
-  doc["modbus"]["enabled"] = modbusCfg.enabled;
-  
-  String output;
-  serializeJson(doc, output);
-  file.print(output);
-  file.close();
-  
-  Serial.println("✅ Zapisano config.json");
-  return true;
+    if (!file)
+    {
+        Serial.println("config.json nie istnieje.");
+        return false;
+    }
+
+    DeserializationError err = deserializeJson(doc, file);
+
+    file.close();
+
+    if (err)
+    {
+        Serial.printf("Błąd JSON: %s\n", err.c_str());
+        return false;
+    }
+
+    return true;
+}
+
+bool ConfigManager::saveConfig(const JsonDocument& doc)
+{
+    File file = LittleFS.open("/config.tmp", "w");
+
+    if (!file)
+    {
+        Serial.println("Nie można utworzyć config.tmp");
+        return false;
+    }
+
+    if (serializeJsonPretty(doc, file) == 0)
+    {
+        file.close();
+        LittleFS.remove("/config.tmp");
+
+        Serial.println("Błąd zapisu JSON");
+        return false;
+    }
+
+    file.flush();
+    file.close();
+
+    LittleFS.remove("/config.json");
+
+    if (LittleFS.exists("/config.json"))
+    {
+        if (!LittleFS.remove("/config.json"))
+        {
+            Serial.println("Nie można usunąć starego config.json");
+            LittleFS.remove("/config.tmp");
+            return false;
+        }
+    }
+    LittleFS.rename("/config.tmp", "/config.json");
+    return true;
+}
+
+bool ConfigManager::updateConfig(std::function<void(JsonDocument&)> updater)
+{
+    DynamicJsonDocument doc(4096);
+
+    if (!loadConfig(doc))
+        return false;
+
+    updater(doc);
+
+    return saveConfig(doc);
+}
+
+bool ConfigManager::saveWifiConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject wifi = doc["wifi"];
+
+        wifi["ip"] = wifiCfg.ip;
+        wifi["gate"] = wifiCfg.gate;
+        wifi["mask"] = wifiCfg.mask;
+        wifi["dns"] = wifiCfg.dns;
+        wifi["ssid"] = wifiCfg.ssid;
+        wifi["pass"] = wifiCfg.pass;
+        wifi["dhcp"] = wifiCfg.dhcp;
+        wifi["active"] = wifiCfg.active;
+    });
+}
+
+bool ConfigManager::saveModbusConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject modbus = doc["modbus"];
+
+        modbus["ip"] = modbusCfg.ip;
+        modbus["port"] = modbusCfg.port;
+        modbus["unitId"] = modbusCfg.unitId;
+        modbus["readInterval"] = modbusCfg.readInterval;
+        modbus["timeout"] = modbusCfg.timeout;
+        modbus["max_retries"] = modbusCfg.maxRetries;
+        modbus["retry_delay"] = modbusCfg.retryDelay;
+    });
+}
+
+bool ConfigManager::saveHttpDataConfig()
+{
+    return updateConfig([this](JsonDocument& doc)
+    {
+        JsonObject http = doc["http_data"];
+
+        http["addr"] = httpDataCfg.addr;
+        http["interval"] = httpDataCfg.interval;
+        http["timeout"] = httpDataCfg.timeout;
+        http["max_retries"] = httpDataCfg.maxRetries;
+        http["retry_delay"] = httpDataCfg.retryDelay;
+    });
+}
+
+void ConfigManager::loadWifiConfig(JsonDocument& doc) {
+    JsonObject http = doc["wifi"];
+    if (!http.isNull()) {
+        wifiCfg.active = wifi["active"] | true;
+        wifiCfg.dhcp = wifi["dhcp"] | false;
+        wifiCfg.ip  = wifi.["ip"] | "192.168.20.34";
+        wifiCfg.mask = wifi["mask"] | "255.255.255.0";
+        wifiCfg.gate = wifi["gate"] | "192.168.20.1";
+        wifiCfg.pass = wifi["pass"] | "",
+        wifiCfg.ssid = wifi["ssid"] | ""
+    }
+}
+
+void ConfigManager::loadHttpConfig(JsonDocument& doc) {
+    JsonObject http = doc["http_data"];
+    if (!http.isNull()) {
+        httpDataCfg.addr = http["addr"] | "";
+        httpDataCfg.interval = http["interval"] | 10000;
+        httpDataCfg.timeout = http["timeout"] | 2000;
+        httpDataCfg.maxRetries = http["max_retries"] | 3;
+        httpDataCfg.retryDelay = http["retry_delay"] | 1000;
+    }
+}
+
+void ConfigManager::loadDataSourceConfig(JsonDocument& doc) {
+    JsonObject ds = doc["data_source"];
+    if (!ds.isNull()) {
+        const char* src = ds["source"] | "modbus";
+        activeDataSource = strcmp(src, "http") == 0 ? SOURCE_HTTP : SOURCE_MODBUS;
+    }
+}
+
+void ConfigManager::loadNtpConfig(JsonDocument& doc) {
+    JsonObject ntp = doc["ntp"];
+    if (!ntp.isNull()) {
+        ntpCfg.server = ntp["server"] | "pool.ntp.org";
+        ntpCfg.gmt_offset = ntp["gmt_offset"] | 3600;
+        ntpCfg.daylight_offset = ntp["daylight_offset"] | 3600;
+    }
 }
 
 // ========== OBSŁUGA KONFIGURACJI AP ==========
@@ -229,11 +218,11 @@ bool ConfigManager::loadWlanConfig() {
   File file = LittleFS.open(wlanConfigPath, "r");
   if (!file) return false;
   
-  String content = file.readString();
-  file.close();
+  //String content = file.readString();
   
-  DynamicJsonDocument doc(512);
-  DeserializationError error = deserializeJson(doc, content);
+  DynamicJsonDocument doc(4096);
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
   
   if (error) {
     Serial.print("Błąd parsowania wlan.json: ");
@@ -257,7 +246,7 @@ bool ConfigManager::loadWlanConfig() {
 
 bool ConfigManager::saveAPConfig(const char* ssid, const char* password, bool active) {
   Serial.println("🔴🔴🔴 UWAGA! saveAPConfig() ZAPISUJE wlan.json!");
-  DynamicJsonDocument doc(512);
+  DynamicJsonDocument doc(4096);
   
   if (ssid != nullptr) {
     strlcpy(ap_config.ssid, ssid, sizeof(ap_config.ssid));
@@ -277,13 +266,12 @@ bool ConfigManager::saveAPConfig(const char* ssid, const char* password, bool ac
     return false;
   }
   
-  String output;
-  serializeJson(doc, output);
-  file.print(output);
-  file.close();
+  //String output;
+  size_t written = serializeJson(doc,file);
   
   Serial.println("✅ Zapisano konfigurację AP");
-  return true;
+  file.close();
+  return written > 0;
 }
 
 const char* ConfigManager::getAP_SSID() {
@@ -298,26 +286,20 @@ bool ConfigManager::isAPActive() {
   return ap_config.active;
 }
 
-// ========== POZOSTAŁE FUNKCJE ==========
-WifiConfig* ConfigManager::getWifiConfig() {
-  return &wifiConfig;
+WifiConfig& ConfigManager::getWifiConfig() {
+    return wifiConfig;
 }
 
-bool ConfigManager::saveWifiConfig(const char* ssid, const char* pass, 
-                                   const char* ip, const char* gate, 
-                                   const char* mask, const char* dns,
-                                   bool dhcp, bool active) {
-  Serial.println("🔴🔴🔴 UWAGA! saveWifiConfig() ZAPISUJE config.json!");
-  strlcpy(wifiConfig.ssid, ssid, sizeof(wifiConfig.ssid));
-  strlcpy(wifiConfig.pass, pass, sizeof(wifiConfig.pass));
-  strlcpy(wifiConfig.ip, ip, sizeof(wifiConfig.ip));
-  strlcpy(wifiConfig.gate, gate, sizeof(wifiConfig.gate));
-  strlcpy(wifiConfig.mask, mask, sizeof(wifiConfig.mask));
-  strlcpy(wifiConfig.dns, dns, sizeof(wifiConfig.dns));
-  wifiConfig.dhcp = dhcp;
-  wifiConfig.active = active;
-  
-  return saveMainConfig();
+ModbusConfig& ConfigManager::getModbusConfig() {
+    return modbusCfg;
+}
+
+Ustawienia& ConfigManager::getUstawienia() {
+    return U;
+}
+
+HttpDataConfig& ConfigManager::getHttpDataConfig() {
+    return httpDataCfg;
 }
 
 void ConfigManager::printConfig() {
@@ -337,9 +319,6 @@ void ConfigManager::printConfig() {
   Serial.print("AP Aktywny: "); Serial.println(ap_config.active ? "Tak" : "Nie");
 }
 
-bool ConfigManager::saveModbusConfig() {
-  return saveMainConfig();  // Najprościej - zapisz cały plik config.json
-}
 
 bool ConfigManager::saveHeaterConfig() {
   return saveMainConfig();  // Najprościej - zapisz cały plik config.json
@@ -350,95 +329,54 @@ bool ConfigManager::saveUstawienia() {
   Serial.println("saveUstawienia: Zapisuję ustawienia...");
   LOG_INFO("USTAWIENIA","Zapisuję ustawienia do config.json");
   
-  File file = LittleFS.open(mainConfigPath, "r");
-  DynamicJsonDocument doc(2048);
-  
-  if (file) {
-    String content = file.readString();
-    file.close();
-    deserializeJson(doc, content);
-  }
-  
-  // Zapisz do sekcji "Ustawienia"
-  doc["Ustawienia"]["HeaterEnabled"] = U.HeaterEnabled;
-  doc["Ustawienia"]["Ugrid_on"] = U.Ugrid_on;
-  doc["Ustawienia"]["Ugrid_off"] = U.Ugrid_off;
-  doc["Ustawienia"]["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
-  doc["Ustawienia"]["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
-  doc["Ustawienia"]["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
-  doc["Ustawienia"]["bojlerTmax"] = U.bojlerTmax;
-  doc["Ustawienia"]["radiatorTmax"] = U.radiatorTmax;
-  doc["Ustawienia"]["radiatorT_critical"] = U.radiatorT_critical;
-  doc["Ustawienia"]["serwer_www_port"] = 80;
-  
-  file = LittleFS.open(mainConfigPath, "w");
-  Serial.println("Otwieram plik config.json!");
-  if (!file) {
-    Serial.println("Błąd otwarcia config.json do zapisu!");
-    LOG_ERROR("USTAWIENIA","Błąd otwarcia config.json do zapisu!");
-    return false;
-  }
-  
-  String output;
-  serializeJson(doc, output);
-  file.print(output);
-  file.close();
-  
-  Serial.println("✅ Zapisano ustawienia:");
-  Serial.println(output);
-  LOG_INFO("USTAWIENIA","Zapisano ustawienia");
-  
-  return true;
+  return updateConfig([this](JsonDocument& doc)
+  {   
+      JsonObject s = doc["Ustawienia"];
+
+      s["HeaterEnabled"] = U.HeaterEnabled;
+      s["Ugrid_on"] = U.Ugrid_on;
+      s["Ugrid_off"] = U.Ugrid_off;
+      s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
+      s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
+      s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
+      s["bojlerTmax"] = U.bojlerTmax;
+      s["radiatorTmax"] = U.radiatorTmax;
+      s["radiatorT_critical"] = U.radiatorT_critical;
+      s["serwer_www_port"] = 80;
+  });  
 }
 
 // ========== ODCZYT STRUKTURY USTAWIENIA ==========
-bool ConfigManager::loadUstawienia() {
-  Serial.println("Odczytuje config.json - szukam sekcji 'Ustawienia'...");
-  File file = LittleFS.open(mainConfigPath, "r");
-  if (!file) {
-    Serial.println("Brak config.json - używam domyślnych");
-    LOG_INFO("URUCHAMIANIE","Brak config.json - używam domyślnych wartości");
-    return false;
-  }
-  
-  String content = file.readString();
-  file.close();
-  
-  DynamicJsonDocument doc(2048);
-  DeserializationError error = deserializeJson(doc, content);
-  
-  if (error) {
-    Serial.println("Błąd parsowania JSON");
-    LOG_ERROR("URUCHAMIANIE","Błąd parsowania JSON");
-    return false;
-  }
-  
-  JsonObject Ustawienia = doc["Ustawienia"];
-  if (Ustawienia) {
-    U.HeaterEnabled = Ustawienia["HeaterEnabled"] | true;
-    U.Ugrid_on = Ustawienia["Ugrid_on"] | 252.0;
-    U.Ugrid_off = Ustawienia["Ugrid_off"] | 250.0;
-    U.HeaterDelay_on_ms = Ustawienia["HeaterDelay_on_ms"] | 1000;
-    U.HeaterDelay_off_ms = Ustawienia["HeaterDelay_off_ms"] | 5000;
-    U.ContactorDelay_off_ms = Ustawienia["ContactorDelay_off_ms"] | 5000;
-    U.bojlerTmax = Ustawienia["bojlerTmax"] | 80.0;
-    U.radiatorTmax = Ustawienia["radiatorTmax"] | 70.0;
-    U.radiatorT_critical = Ustawienia["radiatorT_critical"] | false;
-            
-    Serial.println("✅ Wczytano ustawienia z config.json");
-    LOG_INFO("URUCHAMIANIE","Wczytano ustawienia z config.json");
-    return true;
-  }
+void ConfigManager::loadSettingsConfig(JsonDocument& doc)
+{
+    JsonObject s = doc["Ustawienia"];
+    if (!s.isNull()) {
+        U.HeaterEnabled = s["HeaterEnabled"] | true;
+        U.Ugrid_on = s["Ugrid_on"] | 252.0;
+        U.Ugrid_off = s["Ugrid_off"] | 250.0;
+        U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
+        U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
+        U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
+        U.bojlerTmax = s["bojlerTmax"] | 80.0;
+        U.radiatorTmax = s["radiatorTmax"] | 70.0;
+        U.radiatorT_critical = s["radiatorT_critical"] | false;
+    }
+}
 
-  JsonObject ntpCfg = doc["ntp"];
-  if (ntpCfg) {
-    String ntpServer = ntpCfg["server"] | "pool.ntp.org";
-    long gmtOffset = ntpCfg["gmt_offset"] | 3600;
-    int daylightOffset = ntpCfg["daylight_offset"] | 3600;
-  }
-  
-  Serial.println("Brak sekcji 'Ustawienia' - używam domyślnych");
-  LOG_INFO("URUCHAMIANIE","Brak sekcji 'Ustawienia' w config.json - używam domyślnych wartości");
-  
-  return false;
+// ========== HTTP DATA CONFIG ==========
+HttpDataConfig* ConfigManager::getHttpDataConfig() {
+  return &http_data_cfg;
+}
+
+bool ConfigManager::saveDataSource(const char* source)
+{
+    activeDataSource =
+        strcmp(source, "modbus") == 0 ?
+        SOURCE_MODBUS :
+        SOURCE_HTTP;
+
+    return updateConfig([&](JsonDocument& doc)
+    {
+        doc["data_source"]["source"] = source;
+    });
 }

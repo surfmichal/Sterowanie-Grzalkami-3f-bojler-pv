@@ -64,7 +64,9 @@ void WebServerManager::begin() {
   server.on("/api/heater/enable", HTTP_POST, std::bind(&WebServerManager::handleApiHeaterEnable, this));
   server.on("/api/heater/status", HTTP_GET, std::bind(&WebServerManager::handleApiHeaterStatus, this));
   server.on("/api/version", HTTP_GET, std::bind(&WebServerManager::handleApiVersion, this));
-
+  server.on("/api/save_data_source", HTTP_POST, std::bind(&WebServerManager::handleApiSaveDataSource, this));
+  server.on("/api/data_source", HTTP_GET, std::bind(&WebServerManager::handleApiGetDataSource, this));
+  
   server.on("/api/simulation", HTTP_GET, std::bind(&WebServerManager::handleApiSimulationGet, this));
   server.on("/api/simulation", HTTP_POST, std::bind(&WebServerManager::handleApiSimulationPost, this));
  
@@ -590,6 +592,81 @@ void WebServerManager::handleApiSimulationGet() {
   String response;
   serializeJson(doc, response);
   server.send(200, "application/json", response);
+}
+
+// ========== API: POBIERZ ŹRÓDŁO DANYCH (GET) ==========
+void WebServerManager::handleApiGetDataSource() {
+  DynamicJsonDocument doc(512);
+  
+  // Aktualne źródło
+  doc["data_source"]["source"] = (activeDataSource == SOURCE_MODBUS) ? "modbus" : "http";
+  
+  // Konfiguracja HTTP
+  HttpDataConfig* httpCfg = config->getHttpDataConfig();
+  doc["http_data"]["addr"] = httpCfg->addr;
+  doc["http_data"]["interval"] = httpCfg->interval;
+  doc["http_data"]["timeout"] = httpCfg->timeout;
+  doc["http_data"]["max_retries"] = httpCfg->max_retries;
+  doc["http_data"]["retry_delay"] = httpCfg->retry_delay;
+  
+  // Konfiguracja Modbus
+  doc["modbus"]["ip"] = modbusCfg.ip;
+  doc["modbus"]["port"] = modbusCfg.port;
+  doc["modbus"]["unitId"] = modbusCfg.unitId;
+  doc["modbus"]["readInterval"] = modbusCfg.readInterval;
+  doc["modbus"]["timeout"] = modbusCfg.timeout;
+  doc["modbus"]["max_retries"] = modbusCfg.max_retries;
+  doc["modbus"]["retry_delay"] = modbusCfg.retry_delay;
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
+// ========== API: ZAPISZ ŹRÓDŁO DANYCH (POST) ==========
+void WebServerManager::handleApiSaveDataSource() {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "application/json", "{\"success\":false,\"error\":\"Method not allowed\"}");
+    return;
+  }
+  
+  String body = server.arg("plain");
+  DynamicJsonDocument doc(512);
+  DeserializationError error = deserializeJson(doc, body);
+  
+  if (error) {
+    server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+    return;
+  }
+  
+  // Zapisz źródło danych
+  String source = doc["data_source"]["source"] | "http";
+  config->saveDataSource(source.c_str());
+  
+  // Zapisz HTTP config
+  if (doc.containsKey("http_data")) {
+    strlcpy(http_data_cfg.addr, doc["http_data"]["addr"] | "", sizeof(http_data_cfg.addr));
+    http_data_cfg.interval    = doc["http_data"]["interval"]    | 5000;
+    http_data_cfg.timeout     = doc["http_data"]["timeout"]     | 5000;
+    http_data_cfg.max_retries = doc["http_data"]["max_retries"] | 3;
+    http_data_cfg.retry_delay = doc["http_data"]["retry_delay"] | 1000;
+    config->saveHttpDataConfig();
+  }
+  
+  // Zapisz Modbus config
+  if (doc.containsKey("modbus")) {
+    strlcpy(modbusCfg.ip, doc["modbus"]["ip"] | "192.168.20.70", sizeof(modbusCfg.ip));
+    modbusCfg.port        = doc["modbus"]["port"]        | 502;
+    modbusCfg.unitId      = doc["modbus"]["unitId"]      | 1;
+    modbusCfg.readInterval = doc["modbus"]["readInterval"] | 1000;
+    modbusCfg.timeout     = doc["modbus"]["timeout"]     | 1000;
+    modbusCfg.max_retries = doc["modbus"]["max_retries"] | 3;
+    modbusCfg.retry_delay = doc["modbus"]["retry_delay"] | 1000;
+    config->saveModbusConfig();
+  }
+  
+  LOG_INFO("WebServer", "Źródło danych: %s", source.c_str());
+  server.send(200, "application/json", "{\"success\":true}");
 }
 
 // ========== API: SYMULACJA FALOWNIKA (POST) ==========

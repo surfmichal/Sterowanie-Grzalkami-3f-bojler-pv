@@ -396,6 +396,7 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.HeaterEnabled = s["HeaterEnabled"] | true;
         U.Ugrid_on = s["Ugrid_on"] | 252.0;
         U.Ugrid_off = s["Ugrid_off"] | 250.0;
+        U.ZeroPowerBlock = s["HeaterEnabled"] | false;
         U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
         U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
         U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
@@ -418,6 +419,7 @@ bool ConfigManager::saveUstawienia() {
       s["HeaterEnabled"] = U.HeaterEnabled;
       s["Ugrid_on"] = U.Ugrid_on;
       s["Ugrid_off"] = U.Ugrid_off;
+      s["ZeroPowerBlock"] = U.ZeroPowerBlock;
       s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
       s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
       s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;

@@ -77,6 +77,7 @@ struct Ustawienia {
   bool HeaterEnabled;           // ← Aktywacja systemu grzałek (true=aktywne, false=nieaktywne)
   float Ugrid_on;               // ← float
   float Ugrid_off;              // ← float
+  bool  ZeroPowerBlock;         // ← bool
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
   uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
@@ -142,7 +143,7 @@ struct InverterData {
   float pv2_current;         // Ipv2 (A)
 
   float pv1_power;           // P1 = Upv1 * Ipv1 (W)
-  float pv2_power;           // P2 = Upv2 * Ipv2 (W)
+  float pv2_power;           // P2 = Upv2 * Ipv2 (W)  
   float total_pv_power;      // P1 + P2 (W)
   
   // Sieć
@@ -153,6 +154,7 @@ struct InverterData {
   float gridCurrent2;        // Ib (A) - faza 2
   float gridVoltage3;        // Uc (V) - faza 3
   float gridCurrent3;        // Ic (A) - faza 3
+  float totalPower;          // P_AC (W)
   
   // Produkcja
   float totalEnergy;         // Total_Production (kWh)

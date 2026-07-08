@@ -1,9 +1,12 @@
 - sprawdzić algorytmy załączania i wyłączania
 
+- dodać blokadę od mocy=0
+  - dodać do flagi blokad
+  - sprawdzić działanie
+
 - sprawdzić działanie liczników
 - sprawdzić działanie blokad
 
-- zrobić wybór odczytu danych 
-    - html
-    - modbus
+- rozbudowac symulację
+
 

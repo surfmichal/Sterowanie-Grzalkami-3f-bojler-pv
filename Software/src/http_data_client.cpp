@@ -79,7 +79,7 @@ bool HttpDataClient::parseResponse(String json, HttpData& data) {
     data.pv2_voltage = doc["Upv2"] | 0.0;
     data.pv2_current = doc["Ipv2"] | 0.0;
     data.pv2_power = doc["Power_Pv2"] | 0.0;
-    data.totalPVPower = doc["Power"] | 0.0;
+    data.totalPVPower = data.pv1_power + data.pv2_power;
     
     data.dailyEnergy = doc["Today_Production"] | 0.0;
     data.totalEnergy = doc["Total_Production"] | 0;

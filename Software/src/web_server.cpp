@@ -203,6 +203,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["data_source"] = (activeDataSource == SOURCE_MODBUS) ? "modbus" : (activeDataSource == SOURCE_HTTP) ? "http" : "none";
   doc["u_on"] = U.Ugrid_on;
   doc["u_off"] = U.Ugrid_off;
+  doc["ZeroPowerBlock"] = U.ZeroPowerBlock;
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
   doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
@@ -236,6 +237,7 @@ void WebServerManager::handleApiSaveHeater() {
   U.HeaterEnabled = doc["enabled"] | true;  // Domyślnie włączone
   U.Ugrid_on = doc["u_on"] | 253.0;
   U.Ugrid_off = doc["u_off"] | 252.0;
+  U.ZeroPowerBlock = doc["ZeroPowerBlock"]
   U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
   U.ContactorDelay_off_ms = doc["ContactorDelay_off_ms"] | 5000;
@@ -307,6 +309,7 @@ void WebServerManager::handleApiData() {
   JsonObject heatCfg = doc.createNestedObject("heater_config");
   heatCfg["u_on"] = U.Ugrid_on;
   heatCfg["u_off"] = U.Ugrid_off;
+  heatCfg["ZeroPowerBlock"] = U.ZeroPowerBlock;
   heatCfg["delay_on_ms"] = U.HeaterDelay_on_ms;
   heatCfg["delay_off_ms"] = U.HeaterDelay_off_ms;
   heatCfg["contactor_delay_off_ms"] = U.ContactorDelay_off_ms;

@@ -37,8 +37,7 @@ private:
   
   void startTurnOnTimer(int index);                   // Rozpocznij odliczanie do załączenia
   void cancelTurnOnTimer(int index);                  // Anuluj odliczanie do załączenia
-  
-  
+ 
 
 public:
   HeaterControl();

@@ -7,6 +7,7 @@ extern ModbusManager modbus;
 extern HttpDataClient httpClient;
 extern DataSource activeDataSource;
 extern InverterData inverterData;
+extern Ustawienia U;
 
 DataManager::DataManager() {
   currentSource = SOURCE_NONE;
@@ -69,6 +70,11 @@ bool DataManager::fetchData() {
   }
     
   inverterData.connected = success;
+
+  if (inverterData.power = 0) {
+    heaterBlocks.powerInverterIsZero = true;
+  }
+  else {heaterBlocks.powerInverterIsZero = false;}
   
   if (success) {
     lastUpdate = millis();

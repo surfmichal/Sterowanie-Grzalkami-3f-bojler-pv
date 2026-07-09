@@ -37,7 +37,7 @@ void HttpDataClient::begin() {
   }
  
   apiUrl = String(httpDataCfg.addr);
-  fetchInterval = httpDataCfg.interval;
+  fetchInterval = U.readDataInterval;
   timeout = httpDataCfg.timeout;
   maxRetries = httpDataCfg.maxRetries;
   retryDelay = httpDataCfg.retryDelay;
@@ -290,7 +290,7 @@ void HttpDataClient::reloadConfig() {
 
   // Przeładuj konfigurację z globalnej struktury
   apiUrl = String(httpDataCfg.addr);
-  fetchInterval = httpDataCfg.interval;
+  fetchInterval = U.readDataInterval;
   timeout = httpDataCfg.timeout;
   maxRetries = httpDataCfg.maxRetries;
   retryDelay = httpDataCfg.retryDelay;

@@ -279,6 +279,7 @@ void ConfigManager::loadDataSourceConfig(JsonDocument& doc) {
     if (!ds.isNull()) {
         const char* src = ds["source"] | "modbus";
         activeDataSource = strcmp(src, "http") == 0 ? SOURCE_HTTP : SOURCE_MODBUS;
+        U.readDataInterval = ds["readDataInterval"] | 5000;
     }
 }
 
@@ -290,6 +291,7 @@ bool ConfigManager::saveDataSource()
     return updateConfig([&](JsonDocument& doc)
     {
         doc["data_source"]["source"] = source;
+        doc["data_source"]["readDataInterval"] = (int)U.readDataInterval;             
     });
 }
 
@@ -396,7 +398,7 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.HeaterEnabled = s["HeaterEnabled"] | true;
         U.Ugrid_on = s["Ugrid_on"] | 252.0;
         U.Ugrid_off = s["Ugrid_off"] | 250.0;
-        U.ZeroPowerBlock = s["HeaterEnabled"] | false;
+        U.ZeroPowerLock = s["ZeroPowerLock"] | false;
         U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
         U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
         U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
@@ -404,6 +406,7 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.radiatorTmax = s["radiatorTmax"] | 70;
         U.radiatorT_critical = s["radiatorT_critical"] | false;
         U.serwer_www_port = s["serwer_www_port"] | 80;
+        U.readDataInterval = s["readDataInterval"] | 5000;
     }
 }
 
@@ -419,14 +422,14 @@ bool ConfigManager::saveUstawienia() {
       s["HeaterEnabled"] = U.HeaterEnabled;
       s["Ugrid_on"] = U.Ugrid_on;
       s["Ugrid_off"] = U.Ugrid_off;
-      s["ZeroPowerBlock"] = U.ZeroPowerBlock;
+      s["ZeroPowerLock"] = U.ZeroPowerLock;
       s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
       s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
       s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
       s["bojlerTmax"] = (int)U.bojlerTmax;
       s["radiatorTmax"] = (int)U.radiatorTmax;
       s["radiatorT_critical"] = U.radiatorT_critical;
-      s["serwer_www_port"] = (int)U.serwer_www_port;
+      s["serwer_www_port"] = (int)U.serwer_www_port;      
   });  
 }
 
@@ -464,4 +467,5 @@ void ConfigManager::printConfig() {
   Serial.print("bojlerTmax: "); Serial.println(U.bojlerTmax);
   Serial.print("radiatorTmax: "); Serial.println(U.radiatorTmax);
   Serial.print("radiatorT_critical: "); Serial.println(U.radiatorT_critical ? "true" : "false");
+  Serial.print("readDataInterva: "); Serial.println(U.readDataInterval);
 }

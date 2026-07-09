@@ -249,7 +249,7 @@ void taskDataFetch(void* parameter) {
   dataManager.begin();
   
   unsigned long lastFetch = 0;
-  unsigned long interval = 5000;
+  //unsigned long interval = 5000;
   
   while (true) {
     WDT_RESET();
@@ -259,7 +259,7 @@ void taskDataFetch(void* parameter) {
       dataManager.begin();  // przełącz na nowe źródło
     }
     
-    if (millis() - lastFetch >= interval) {
+    if (millis() - lastFetch >= U.readDataInterval) {
       lastFetch = millis();
       
       if (activeDataSource != SOURCE_NONE) {
@@ -312,9 +312,9 @@ void taskNTPSync(void* parameter) {
     
     // Sprawdź czy to nowy dzień (reset liczników)
     if (ntp.isSynced() && ntp.isNewDay()) {
-      Serial.println("NTP: wykryto nowy dzień! Resetuję liczniki...");
-      LOG_INFO("NTP", "Wykryto nowy dzień! Resetuję liczniki...");
-      resetDailyCounters();
+      Serial.println("NTP: wykryto nowy dzień!");
+      LOG_INFO("NTP", "Wykryto nowy dzień!");
+      //resetDailyCounters();
     }
     
     //vTaskDelay(60000 / portTICK_PERIOD_MS);  // co minutę
@@ -347,6 +347,9 @@ void taskStatisticsMonitor(void* parameter) {
   
   while (true) {
     WDT_RESET();  // 🔥 kopnij watchdoga
+
+    // ⬇️ DODANE: liczenie czasu pracy grzałek, co ~1s (tyle ile trwa ta pętla)
+    updateHeaterRuntime();
     
     unsigned long now = millis();
     
@@ -373,8 +376,7 @@ void taskStatisticsMonitor(void* parameter) {
         }
       }
     }
-    
-    //vTaskDelay(1000 / portTICK_PERIOD_MS);  // sprawdzaj co sekundę, ale zapisuj co minutę
+        
     vTaskDelay(pdMS_TO_TICKS(1000)); 
   }
 }
@@ -425,8 +427,14 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
   TaskParams* params = new TaskParams;
   params->wifi = wifi;
   params->config = config;
-  //loadStatistics();
+  loadStatistics();
   //loadTemperatureHistory();
+
+  TaskHandle_t taskNTPHandle = NULL;
+  TaskHandle_t taskDataFetchHandle = NULL;
+  TaskHandle_t taskStatisticsHandle = NULL;
+  TaskHandle_t taskTempLoggerHandle = NULL;
+  TaskHandle_t taskHeaterControlHandle = NULL;
   
   // Core 1: WiFi monitor (przekaż parametry)
   xTaskCreatePinnedToCore(
@@ -466,6 +474,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     NULL,
     0
   );
+  esp_task_wdt_add(taskNTPHandle);
   
   xTaskCreatePinnedToCore(
     taskDataFetch,
@@ -476,6 +485,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     NULL,
     1
   );
+  esp_task_wdt_add(taskDataFetchHandle);
 
   // Zadanie monitora statystyk czasu pracy grzałek (Core 0)
   xTaskCreatePinnedToCore(
@@ -487,6 +497,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     NULL,
     0
   );
+  esp_task_wdt_add(taskStatisticsHandle);
   
   
   // Zadanie logowania temperatury co 2 minuty (Core 1)
@@ -499,6 +510,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     NULL,
     1
   );
+  esp_task_wdt_add(taskTempLoggerHandle);
   
   // Core 1: LED (priorytet niższy)
   xTaskCreatePinnedToCore(
@@ -533,7 +545,8 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     2,
     NULL,
     1
-  );// Nie dodajemy do watchdoga, bo to główne zadanie sterujące  
+  );
+  esp_task_wdt_add(taskHeaterControlHandle);
   
   Serial.println("Zadania FreeRTOS uruchomione:");
   Serial.println("  - WiFi Monitor (Core 0, prio 1)");

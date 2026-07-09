@@ -37,60 +37,39 @@
             <a href='/settings'>⚙️ Ustawienia</a>
             <a href='/logs'>📝 Logi</a>
         </div>
-        <h1>🔧 Sterownik Grzałek + Falownik Sofar</h1>
+        <h1>🔧 Grzałki-3F </h1>
         
         <div class='grid'>      
             
-            <!-- KARTA: NAPIĘCIA SIECI -->
+            <!-- KARTA: NAPIĘCIA I PRĄDY SIECI -->
             <div class='card'>
                 <h3>☀️ Inwerter dane z <span id='dataSource'>---</span> 
                     <span id='DataReadStatus' class='status'></span>
                     <span id='DataReadStatusText' style='font-size: 12px;'></span>
                 </h3>
                 <table>
-                    <tr><td>Faza L1:</td><td><span id='v1'>---</span> <span class='unit'>V</span></td></tr>
-                    <tr><td>Faza L2:</td><td><span id='v2'>---</span> <span class='unit'>V</span></td></tr>
-                    <tr><td>Faza L3:</td><td><span id='v3'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr>
+                        <td style='width:40%;'><strong>Faza L1:</strong></td>
+                        <td style='width:30%;'><span id='v1'>---</span> <span class='unit'>V</span></td>
+                        <td style='width:30%; border-left:1px solid #ddd; padding-left:15px;'><span id='a1'>---</span> <span class='unit'>A</span></td>                        
+                    </tr>
+                    <tr>
+                        <td><strong>Faza L2:</strong></td>
+                        <td><span id='v2'>---</span> <span class='unit'>V</span></td>
+                        <td style='border-left:1px solid #ddd; padding-left:15px;'><span id='a2'>---</span> <span class='unit'>A</span></td>                        
+                    </tr>
+                    <tr>
+                        <td><strong>Faza L3:</strong></td>
+                        <td><span id='v3'>---</span> <span class='unit'>V</span></td>
+                        <td style='border-left:1px solid #ddd; padding-left:15px;'><span id='a3'>---</span> <span class='unit'>A</span></td>                        
+                    </tr>
+                    <tr style='border-top:2px solid #ddd;'>
+                        <td colspan='2' style='padding-left:15px;'><strong>Moc całkowita:</strong></td>                                                                    
+                        <td colspan='2' style='padding-left:15px;'><strong><span id='totalPower'>---</span> <span class='unit'>W</span></strong></td>                        
+                        <td colspan='2'></td>
+                    </tr>
                 </table>
-            </div>
-            
-            <!-- KARTA: PRĄDY SIECI -->
-            <div class='card'>
-                <h3>🔌 Prądy sieciowe</h3>
-                <table>
-                    <tr><td>Faza L1:</td><td><span id='a1'>---</span> <span class='unit'>A</span></td></tr>
-                    <tr><td>Faza L2:</td><td><span id='a2'>---</span> <span class='unit'>A</span></td></tr>
-                    <tr><td>Faza L3:</td><td><span id='a3'>---</span> <span class='unit'>A</span></td></tr>
-                    <tr style='border-top:2px solid #ddd;'><td><strong>Moc całkowita:</strong></td><td><strong><span id='totalPower'>---</span> <span class='unit'>W</span></strong></td></tr>
-                </table>
-            </div>
-
-            <!-- KARTA: PRODUKCJA -->
-            <div class='card'>
-                <h3>📊 Produkcja</h3>
-                <table>
-                    <tr><td>Dzisiaj:</td><td><span id='dailyEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
-                    <tr><td>Całkowita:</td><td><span id='totalEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
-                    <tr><td>Temperatura falownika:</td><td><span id='tempInner'>---</span> <span class='unit'>°C</span></td></tr>
-                    <tr><td>Temperatura modułów:</td><td><span id='tempModule'>---</span> <span class='unit'>°C</span></td></tr>
-                </table>
-            </div>
-            
-            <!-- KARTA: STRINGI PV -->
-            <div class='card'>
-                <h3>🔋 Stringi PV</h3>
-                <table>
-                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 1</strong></td></tr>
-                    <tr><td>Napięcie:</td><td><span id='pv1_v'>---</span> <span class='unit'>V</span></td></tr>
-                    <tr><td>Prąd:</td><td><span id='pv1_a'>---</span> <span class='unit'>A</span></td></tr>
-                    <tr><td>Moc:</td><td><span id='pv1_w'>---</span> <span class='unit'>W</span></td></tr>
-                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 2</strong></td></tr>
-                    <tr><td>Napięcie:</td><td><span id='pv2_v'>---</span> <span class='unit'>V</span></td></tr>
-                    <tr><td>Prąd:</td><td><span id='pv2_a'>---</span> <span class='unit'>A</span></td></tr>
-                    <tr><td>Moc:</td><td><span id='pv2_w'>---</span> <span class='unit'>W</span></td></tr>
-                    <tr style='border-top:2px solid #ddd;'><td><strong>Moc PV całkowita:</strong></td><td><strong><span id='totalPV'>---</span> <span class='unit'>W</span></strong></td></tr>
-                </table>
-            </div>
+            </div>            
                         
             <!-- KARTA: STEROWANIE GRZAŁKAMI -->
             <div class='card'>
@@ -102,7 +81,14 @@
                  <div style='margin-bottom: 8px; padding: 8px; border-radius: 5px; text-align: center; background: #fff3e0;' id='contactorCard'>
                     <span>Stycznik główny: </span>
                     <strong id='contactorState'>---</strong>
-                </div>        
+                </div>     
+                
+                <!-- Przyciski grzałek -->
+                <div style='display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;'>
+                    <button id='grzalka1' class='off' style='flex:1; min-width: 80px;'>Grzałka 1 OFF</button>
+                    <button id='grzalka2' class='off' style='flex:1; min-width: 80px;'>Grzałka 2 OFF</button>
+                    <button id='grzalka3' class='off' style='flex:1; min-width: 80px;'>Grzałka 3 OFF</button>
+                </div>
                 
                 <!-- Progi i opóźnienia w tabeli -->
                 <div style='margin-bottom: 10px; padding: 8px; background: #f5f5f5; border-radius: 5px;'>
@@ -128,13 +114,6 @@
                             <td style='padding: 4px 8px; text-align: right;'><strong><span id='ContactorDelay_off_ms'>---</span> ms</strong></td>
                         </tr>
                     </table>
-                </div>
-                
-                <!-- Przyciski grzałek -->
-                <div style='display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;'>
-                    <button id='grzalka1' class='off' style='flex:1; min-width: 80px;'>Grzałka 1 OFF</button>
-                    <button id='grzalka2' class='off' style='flex:1; min-width: 80px;'>Grzałka 2 OFF</button>
-                    <button id='grzalka3' class='off' style='flex:1; min-width: 80px;'>Grzałka 3 OFF</button>
                 </div>
                 
                 <!-- Status -->
@@ -180,6 +159,33 @@
                         <div id='radiatorBar' style='background: #ff9800; border-radius: 10px; height: 10px; width: 0%; transition: width 0.5s;'></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- KARTA: PRODUKCJA -->
+            <div class='card'>
+                <h3>📊 Produkcja</h3>
+                <table>
+                    <tr><td>Dzisiaj:</td><td><span id='dailyEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Całkowita:</td><td><span id='totalEnergy'>---</span> <span class='unit'>kWh</span></td></tr>
+                    <tr><td>Temperatura falownika:</td><td><span id='tempInner'>---</span> <span class='unit'>°C</span></td></tr>
+                    <tr><td>Temperatura modułów:</td><td><span id='tempModule'>---</span> <span class='unit'>°C</span></td></tr>
+                </table>
+            </div>
+            
+            <!-- KARTA: STRINGI PV -->
+            <div class='card'>
+                <h3>🔋 Stringi PV</h3>
+                <table>
+                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 1</strong></td></tr>
+                    <tr><td>Napięcie:</td><td><span id='pv1_v'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Prąd:</td><td><span id='pv1_a'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Moc:</td><td><span id='pv1_w'>---</span> <span class='unit'>W</span></td></tr>
+                    <tr><td colspan='2' style='background:#e0e0e0;text-align:center;'><strong>String 2</strong></td></tr>
+                    <tr><td>Napięcie:</td><td><span id='pv2_v'>---</span> <span class='unit'>V</span></td></tr>
+                    <tr><td>Prąd:</td><td><span id='pv2_a'>---</span> <span class='unit'>A</span></td></tr>
+                    <tr><td>Moc:</td><td><span id='pv2_w'>---</span> <span class='unit'>W</span></td></tr>
+                    <tr style='border-top:2px solid #ddd;'><td><strong>Moc PV całkowita:</strong></td><td><strong><span id='totalPV'>---</span> <span class='unit'>W</span></strong></td></tr>
+                </table>
             </div>
 
             <!-- KARTA: STATUS SYSTEMU -->

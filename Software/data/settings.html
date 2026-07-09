@@ -85,13 +85,22 @@
                 <div class='row'>
                     <div class='form-group'>
                         <label>Maksymalna temp. bojlera (°C)</label>
-                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>  <!-- ← zmiana na małe t -->
+                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>  
                     </div>
                     <div class='form-group'>
                         <label>Maksymalna temp. radiatora (°C)</label>
-                        <input type='number' id='radiator_Tmax' step='1' placeholder='85'>  <!-- ← zmiana na małe t -->
+                        <input type='number' id='radiator_Tmax' step='1' placeholder='85'> 
                     </div>
-                </div>               
+                </div>   
+                <div class='form-group'>
+                    <label class='checkbox-group'>
+                        <input type='checkbox' id='ZeroPowerLock' checked> 
+                        Blokada załączania grzałek gdy moc falownika wynosi 0 W 
+                    </label>
+                    <div style='font-size: 12px; color: #666; margin-top: 5px;'>
+                        Jeśli odznaczone – grzałki załącają się przy każdej mocy falownika 
+                    </div>
+                </div>            
                 <div class='form-group'>
                     <label class='checkbox-group'>
                         <input type='checkbox' id='radiatorT_critical' checked> 
@@ -172,11 +181,11 @@
                 <div class='row'>
                     <div class='form-group'>
                         <label>Interwał odczytu (ms)</label>
-                        <input type='number' id='http_interval' value='5000' min='1000' step='500'>
+                        <input type='number' id='readDataInterval' value='5000' min='1000' step='500'>
                     </div>
                     <div class='form-group'>
                         <label>Timeout (ms)</label>
-                        <input type='number' id='http_timeout' value='5000' min='500' step='500'>
+                        <input type='number' id='http_timeout' value='5000' min='1000' step='500'>
                     </div>
                 </div>
                 <div class='row'>
@@ -216,7 +225,7 @@
                 <div class='row'>
                     <div class='form-group'>
                         <label>Interwał odczytu (ms)</label>
-                        <input type='number' id='modbus_readInterval' value='1000' min='500' step='500'>
+                        <input type='number' id='readDataInterval' value='5000' min='1000' step='500'>
                     </div>
                     <div class='form-group'>
                         <label>Timeout (ms)</label>
@@ -303,13 +312,14 @@
                     // ✅ POPRAWIONE ID (zgodne z HTML)
                     document.getElementById('heater_u_on').value = data.u_on ?? 252;
                     document.getElementById('heater_u_off').value = data.u_off ?? 250;
+                    document.getElementById('ZeroPowerLock').checked = data.ZeroPowerLock !== false;
                     document.getElementById('heater_delay_on').value = data.delay_on_ms ?? 1000;
                     document.getElementById('heater_delay_off').value = data.delay_off_ms ?? 5000;
                     document.getElementById('ContactorDelay_off_ms').value = data.ContactorDelay_off_ms ?? 5000;
                     document.getElementById('bojler_Tmax').value = data.bojler_Tmax ?? 85;        // ← duże T
                     document.getElementById('heater_enabled').checked = data.Heater_enabled !== false;
                     document.getElementById('radiatorT_critical').checked = data.radiatorT_critical !== false;
-                    document.getElementById('radiator_Tmax').value = data.radiator_Tmax ?? 60;     // ← duże T
+                    document.getElementById('radiator_Tmax').value = data.radiator_Tmax ?? 60;     // ← duże T                    
                 });
             
             // Konfiguracja logów
@@ -370,14 +380,14 @@
             fetch('/api/data_source')
                 .then(response => response.json())
                 .then(data => {
-                    const source = data.data_source?.source || 'http';
+                    const source = data.data_source?.source || 'http';                    
                     document.getElementById('data_source').value = source;
                     toggleDataSource();
+                    document.getElementById('readDataInterval').value = data.readDataInterval || 5000;
 
                     // HTTP
                     if (data.http_data) {
                         document.getElementById('http_addr').value = data.http_data.addr || '';
-                        document.getElementById('http_interval').value = data.http_data.interval || 0;
                         document.getElementById('http_timeout').value = data.http_data.timeout || 0;
                         document.getElementById('http_max_retries').value = data.http_data.max_retries || 0;
                         document.getElementById('http_retry_delay').value = data.http_data.retry_delay || 0;
@@ -389,7 +399,6 @@
                         document.getElementById('modbus_ip').value = data.modbus.ip || '';
                         document.getElementById('modbus_port').value = data.modbus.port || 502;
                         document.getElementById('modbus_unitId').value = data.modbus.unitId || 1;
-                        document.getElementById('modbus_readInterval').value = data.modbus.readInterval || 1000;
                         document.getElementById('modbus_timeout').value = data.modbus.timeout || 1000;
                         document.getElementById('modbus_max_retries').value = data.modbus.max_retries || 3;
                         document.getElementById('modbus_retry_delay').value = data.modbus.retry_delay || 1000;
@@ -405,19 +414,19 @@
                 data_source: { source: source },
                 http_data: {
                     addr: document.getElementById('http_addr').value,
-                    interval: parseInt(document.getElementById('http_interval').value),
                     timeout: parseInt(document.getElementById('http_timeout').value),
                     max_retries: parseInt(document.getElementById('http_max_retries').value),
-                    retry_delay: parseInt(document.getElementById('http_retry_delay').value)
+                    retry_delay: parseInt(document.getElementById('http_retry_delay').value),
+                    readDataInterval: parseInt(document.getElementById('readDataInterval'))
                 },
                 modbus: {
                     ip: document.getElementById('modbus_ip').value,
                     port: parseInt(document.getElementById('modbus_port').value),
                     unitId: parseInt(document.getElementById('modbus_unitId').value),
-                    readInterval: parseInt(document.getElementById('modbus_readInterval').value),
                     timeout: parseInt(document.getElementById('modbus_timeout').value),
                     max_retries: parseInt(document.getElementById('modbus_max_retries').value),
-                    retry_delay: parseInt(document.getElementById('modbus_retry_delay').value)
+                    retry_delay: parseInt(document.getElementById('modbus_retry_delay').value),
+                    readDataInterval: parseInt(document.getElementById('readDataInterval'))
                 }
             };
 
@@ -449,12 +458,14 @@
                 enabled: document.getElementById('heater_enabled').checked,
                 u_on: parseFloat(document.getElementById('heater_u_on').value),
                 u_off: parseFloat(document.getElementById('heater_u_off').value),
+                ZeroPowerLock: parseFloat(document.getElementById('ZeroPowerLock').value),
                 delay_on_ms: parseInt(document.getElementById('heater_delay_on').value),
                 delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
                 ContactorDelay_off_ms: parseInt(document.getElementById('ContactorDelay_off_ms').value),
                 t_max: parseFloat(document.getElementById('bojler_Tmax').value),           // ← duże T
                 radiatorT_critical: document.getElementById('radiatorT_critical').checked,
-                radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value)  // ← duże T
+                radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value), 
+                readDataInterval: parseInt(document.getElementById('readDataInterval'))
             };
             
             console.log('📤 Wysyłam dane:', data);

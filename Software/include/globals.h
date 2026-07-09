@@ -77,7 +77,7 @@ struct Ustawienia {
   bool HeaterEnabled;           // ← Aktywacja systemu grzałek (true=aktywne, false=nieaktywne)
   float Ugrid_on;               // ← float
   float Ugrid_off;              // ← float
-  bool  ZeroPowerBlock;         // ← bool
+  bool  ZeroPowerLock;         // ← bool
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
   uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
@@ -85,6 +85,7 @@ struct Ustawienia {
   int8_t radiatorTmax;           // ← int8 
   bool radiatorT_critical;      // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
   uint8_t serwer_www_port;      // ← uint8_t lub int
+  uint16_t readDataInterval;    // interwal odczytu danych
 };
 // ========== STRUKTURA CZASU ==========
 struct CzasNTP {
@@ -203,7 +204,7 @@ struct HttpDataConfig {
   uint16_t interval;      // ms
   uint16_t timeout;       // ms
   uint8_t maxRetries;
-  uint16_t retryDelay;   // ms
+  uint16_t retryDelay;    // ms
 };
 
 
@@ -217,13 +218,14 @@ enum DataSource : uint8_t {
 // ========== SYSTEM BLOKAD GRZAŁEK ==========
 struct HeaterBlockFlags {
     // Blokady krytyczne (wyłączają grzałki)
-    bool inverter_offline;        // Brak danych z inwertera
-    bool temp_bojler_exceeded;  // Temperatura bojlera >= max
+    bool inverter_offline;       // Brak danych z inwertera
+    bool temp_bojler_exceeded;   // Temperatura bojlera >= max
     bool temp_bojler_sensor_error; // Czujnik bojlera nie działa 
     bool temp_radiator_exceeded; // Temperatura radiatora >= max
-    bool radiator_sensor_error; // Czujnik radiatora nie działa (jeśli krytyczny)
-    bool manual_disable;        // Ręczne wyłączenie przez użytkownika
+    bool radiator_sensor_error;  // Czujnik radiatora nie działa (jeśli krytyczny)
+    bool manual_disable;         // Ręczne wyłączenie przez użytkownika
     bool heater_system_disabled; // System grzania wyłączony w config
+    bool powerInverterIsZero;    // zerowa moc falownika - jesli flaga zalaczona
     
     // Ostrzeżenia (nie blokują, tylko informują)
     bool temp_bojler_warning;   // Temperatura bojlera blisko max
@@ -283,8 +285,6 @@ struct TemperatureFIFO {
   uint16_t count;                    // liczba zapisanych pomiarów (max 720)
   uint16_t last_index;               // ostatni odczytany indeks (do API)
 };
-
-
 
 // ========== STRUKTURA DLA CZUJNIKA TEMPERATURY ==========
 struct CzujnikTemp {

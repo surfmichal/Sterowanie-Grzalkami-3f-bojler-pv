@@ -209,7 +209,7 @@ void ModbusManager::taskModbus(void* parameter) {
     return;
   }
 
-  uint16_t readInterval = (modbusCfg.readInterval > 0) ? modbusCfg.readInterval : 5000;
+  uint16_t readInterval = (U.readDataInterval > 0) ? U.readDataInterval : 5000;
 
   while (true) {
     if (simulationMode) {
@@ -248,6 +248,6 @@ void ModbusManager::taskModbus(void* parameter) {
       }
     }
     
-    vTaskDelay(modbusCfg.readInterval / portTICK_PERIOD_MS);
+    vTaskDelay(U.readDataInterval / portTICK_PERIOD_MS);
   }
 }

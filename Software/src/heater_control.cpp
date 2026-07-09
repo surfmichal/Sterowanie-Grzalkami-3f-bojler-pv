@@ -438,6 +438,7 @@ void HeaterControl::updateHeaterState(int index) {
 
 // ========== GŁÓWNA FUNKCJA update() ==========
 void HeaterControl::update() {
+ 
   // ===== 1. SPRAWDŹ DANE =====
   if (!isModbusDataValid()) {
     bool wasAnythingOn = false;
@@ -680,7 +681,14 @@ void HeaterControl::updateBlockFlags() {
         Serial.println("🔴 Blokada: SYSTEM GRZANIA WYŁĄCZONY W CONFIG");
     }
     
-    // 5. Sprawdź czy jakakolwiek blokada jest aktywna
+    // 5. Moc falownika wynosi zero - blokujemy grzałki (jeśli flaga załaczona)
+    if (U.ZeroPowerLock) {
+        heaterBlocks.powerInverterIsZero = true;
+        Serial.println("🔴 Blokada: MOC FALOWNIKA = 0");
+    }
+
+
+    // 6. Sprawdź czy jakakolwiek blokada jest aktywna
     heaterBlocks.any_blocked = false;
     heaterBlocks.active_blocks_count = 0;
     
@@ -690,6 +698,7 @@ void HeaterControl::updateBlockFlags() {
     if (heaterBlocks.temp_bojler_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.temp_radiator_exceeded) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.radiator_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.powerInverterIsZero) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.manual_disable) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.heater_system_disabled) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     
@@ -720,6 +729,7 @@ String HeaterControl::getBlockReason() {
     if (heaterBlocks.temp_bojler_exceeded) reason += "❌ Temp. bojlera za wysoka; ";
     if (heaterBlocks.temp_radiator_exceeded) reason += "❌ Temp. radiatora za wysoka; ";
     if (heaterBlocks.radiator_sensor_error) reason += "❌ Czujnik radiatora nie działa; ";
+    if (heaterBlocks.powerInverterIsZero) reason += "❌ Moc falownika = 0; ";
     if (heaterBlocks.manual_disable) reason += "❌ Ręczne wyłączenie; ";
     if (heaterBlocks.heater_system_disabled) reason += "❌ System wyłączony w config; ";
     
@@ -727,3 +737,5 @@ String HeaterControl::getBlockReason() {
     
     return reason;
 }
+
+ 

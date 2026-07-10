@@ -77,7 +77,8 @@ struct Ustawienia {
   bool HeaterEnabled;           // ← Aktywacja systemu grzałek (true=aktywne, false=nieaktywne)
   float Ugrid_on;               // ← float
   float Ugrid_off;              // ← float
-  bool  ZeroPowerLock;         // ← bool
+  bool  MinPowerLock;           // ← bool     - flaga blokady od minimalnej mocy falownika
+  uint16_t MinPower;            // ← uint16_t - minimalna wartość mocy aby sterować grzałkami
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
   uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika

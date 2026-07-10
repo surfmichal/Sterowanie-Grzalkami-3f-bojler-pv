@@ -203,7 +203,8 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["data_source"] = (activeDataSource == SOURCE_MODBUS) ? "modbus" : (activeDataSource == SOURCE_HTTP) ? "http" : "none";
   doc["u_on"] = U.Ugrid_on;
   doc["u_off"] = U.Ugrid_off;
-  doc["ZeroPowerLock"] = U.ZeroPowerLock;
+  doc["MinPowerLock"] = U.MinPowerLock;
+  doc["MinPower"] = U.MinPower;
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
   doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
@@ -238,7 +239,8 @@ void WebServerManager::handleApiSaveHeater() {
   U.HeaterEnabled = doc["enabled"] | true;  // Domyślnie włączone
   U.Ugrid_on = doc["u_on"] | 253.0;
   U.Ugrid_off = doc["u_off"] | 252.0;
-  U.ZeroPowerLock = doc["ZeroPowerLock"] | false;
+  U.MinPowerLock = doc["MinPowerLock"] | false;
+  U.MinPower = doc["MinPower"] | 3000;
   U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
   U.ContactorDelay_off_ms = doc["ContactorDelay_off_ms"] | 5000;
@@ -272,7 +274,6 @@ void WebServerManager::handleApiData() {
     doc["inverterData"]["grid"]["a1"] = inverterData.gridCurrent1;
     doc["inverterData"]["grid"]["a2"] = inverterData.gridCurrent2;
     doc["inverterData"]["grid"]["a3"] = inverterData.gridCurrent3;
-    doc["inverterData"]["total_power"] = inverterData.power;
     doc["inverterData"]["pv"]["p1_voltage"] = inverterData.pv1_voltage;
     doc["inverterData"]["pv"]["p1_current"] = inverterData.pv1_current;
     doc["inverterData"]["pv"]["p1_power"] = inverterData.pv1_power;
@@ -311,7 +312,8 @@ void WebServerManager::handleApiData() {
   JsonObject heatCfg = doc.createNestedObject("heater_config");
   heatCfg["u_on"] = U.Ugrid_on;
   heatCfg["u_off"] = U.Ugrid_off;
-  heatCfg["ZeroPowerLock"] = U.ZeroPowerLock;
+  heatCfg["MinPowerLock"] = U.MinPowerLock;
+  heatCfg["MinPower"] = U.MinPower;
   heatCfg["delay_on_ms"] = U.HeaterDelay_on_ms;
   heatCfg["delay_off_ms"] = U.HeaterDelay_off_ms;
   heatCfg["contactor_delay_off_ms"] = U.ContactorDelay_off_ms;

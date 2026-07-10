@@ -310,7 +310,7 @@ void ConfigManager::loadHttpConfig(JsonDocument& doc) {
     JsonObject http = doc["http_data"];
     if (!http.isNull()) {
         strlcpy(httpDataCfg.addr, http["addr"] | "", sizeof(httpDataCfg.addr));
-        httpDataCfg.interval = http["interval"] | 10000;
+        //httpDataCfg.interval = http["interval"] | 10000;
         httpDataCfg.timeout = http["timeout"] | 2000;
         httpDataCfg.maxRetries = http["max_retries"] | 3;
         httpDataCfg.retryDelay = http["retry_delay"] | 1000;
@@ -325,7 +325,7 @@ bool ConfigManager::saveHttpDataConfig()
         JsonObject http = doc["http_data"];
 
         http["addr"] = httpDataCfg.addr;
-        http["interval"] = httpDataCfg.interval;
+        //http["interval"] = httpDataCfg.interval;
         http["timeout"] = httpDataCfg.timeout;
         http["max_retries"] = httpDataCfg.maxRetries;
         http["retry_delay"] = httpDataCfg.retryDelay;
@@ -339,7 +339,7 @@ void ConfigManager::loadModbusConfig(JsonDocument& doc) {
         strlcpy(modbusCfg.ip, modbus["ip"] | "192.168.20.70", sizeof(modbusCfg.ip));
         modbusCfg.port = modbus["port"] | 502;
         modbusCfg.unitId = modbus["unitId"] | 1;
-        modbusCfg.readInterval = modbus["readInterval"] | 1000;
+        //modbusCfg.readInterval = modbus["readInterval"] | 1000;
         modbusCfg.timeout = modbus["timeout"] | 1000;
         modbusCfg.maxRetries = modbus["max_retries"] | 3;
         modbusCfg.retryDelay = modbus["retry_delay"] | 1000;
@@ -356,7 +356,7 @@ bool ConfigManager::saveModbusConfig()
         modbus["ip"] = modbusCfg.ip;
         modbus["port"] = modbusCfg.port;
         modbus["unitId"] = modbusCfg.unitId;
-        modbus["readInterval"] = modbusCfg.readInterval;
+        //modbus["readInterval"] = modbusCfg.readInterval;
         modbus["timeout"] = modbusCfg.timeout;
         modbus["max_retries"] = modbusCfg.maxRetries;
         modbus["retry_delay"] = modbusCfg.retryDelay;
@@ -398,7 +398,8 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.HeaterEnabled = s["HeaterEnabled"] | true;
         U.Ugrid_on = s["Ugrid_on"] | 252.0;
         U.Ugrid_off = s["Ugrid_off"] | 250.0;
-        U.ZeroPowerLock = s["ZeroPowerLock"] | false;
+        U.MinPowerLock = s["MinPowerLock"] | false;
+        U.MinPower = s["MinPower"] | 3000;
         U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
         U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
         U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
@@ -422,7 +423,8 @@ bool ConfigManager::saveUstawienia() {
       s["HeaterEnabled"] = U.HeaterEnabled;
       s["Ugrid_on"] = U.Ugrid_on;
       s["Ugrid_off"] = U.Ugrid_off;
-      s["ZeroPowerLock"] = U.ZeroPowerLock;
+      s["MinPowerLock"] = U.MinPowerLock;
+      s["MinPower"] = U.MinPower;
       s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
       s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
       s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;

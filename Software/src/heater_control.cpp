@@ -682,9 +682,11 @@ void HeaterControl::updateBlockFlags() {
     }
     
     // 5. Moc falownika wynosi zero - blokujemy grzałki (jeśli flaga załaczona)
-    if (U.ZeroPowerLock) {
+    if (U.MinPowerLock) {
+      if (inverterData.power < U.MinPower) {
         heaterBlocks.powerInverterIsZero = true;
-        Serial.println("🔴 Blokada: MOC FALOWNIKA = 0");
+        Serial.println("🔴 Blokada: MOC FALOWNIKA MNIEJSZA OD MINIMUM");
+      }
     }
 
 

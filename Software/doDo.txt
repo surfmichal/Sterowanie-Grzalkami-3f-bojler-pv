@@ -6,7 +6,17 @@
 
 - sprawdzić działanie liczników
 - sprawdzić działanie blokad
+- spradzić działanie ledów
 
+- zrobić na index.html informację o blokadzie
+- zrobić w ustawieniach załączanie symulacji
+    - rozbudować symulację o inne parametry
+
+- rozważyć zrobienia wyłacznika blokada ręczna
+
+<<<<<<< Updated upstream
 - rozbudowac symulację
 
+=======
+>>>>>>> Stashed changes
 

@@ -29,6 +29,44 @@
         .system-on { background: #4CAF50; color: white; }
         .system-off { background: #9e9e9e; color: white; }
         .button-disabled { background: #cccccc !important; color: #666666 !important; cursor: not-allowed !important; opacity: 0.6; }
+        .header-row {display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; padding: 10px 0; border-bottom: 2px solid #4CAF50; margin-bottom: 20px;}
+        .header-title {margin: 0; font-size: 24px; }
+        .header-datetime {font-size: 16px; color: #666; font-weight: normal; }
+        .header-date { font-size: 14px;color: #999; margin-left: 10px; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row > * { flex: 1; min-width: 100px; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; color: #555; margin-bottom: 3px; }
+        .form-group input { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .checkbox-group input { width: auto; }
+        .temp-bar-container {
+            background: #e0e0e0;
+            border-radius: 12px;
+            height: 20px;           /* ← grubość paska */
+            margin-top: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .temp-bar-fill {
+            border-radius: 12px;
+            height: 20px;           /* ← grubość paska (taka sama) */
+            width: 0%;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        /* Dodatkowo: wyświetl procent lub wartość na pasku (opcjonalnie) */
+        .temp-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -37,7 +75,14 @@
             <a href='/settings'>⚙️ Ustawienia</a>
             <a href='/logs'>📝 Logi</a>
         </div>
-        <h1>🔧 Grzałki-3F </h1>
+
+        <div class='header-row'>
+            <h1 class='header-title'>🔧 Grzałki-3F</h1>
+            <div>
+                <span id='ntpDatetime' class='header-datetime'>---</span>
+                <span id='ntpDate' class='header-date'>---</span>
+            </div>
+        </div>
         
         <div class='grid'>      
             
@@ -82,17 +127,56 @@
                         <td colspan='2' style='padding-left:15px;'><strong><span id='totalPowerPVgrid'>---</span> <span class='unit'>W</span></strong></td>
                     </tr>
                 </table>
-            </div>            
+            </div>     
+            
+            <!-- KARTA: TEMPERATURY -->
+            <div class='card'>
+                <h3>🌡️ Temperatury</h3>
+                
+                <!-- BOJLER -->
+                <div style='margin-bottom: 15px;'>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <div>
+                            <strong>Bojler</strong>
+                            <span id='bojlerStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
+                        </div>
+                        <div>
+                            <span id='tempBojlerDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
+                            <span class='unit'>°C</span>
+                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempBojlerMax'>--</span>°C</span>
+                        </div>
+                    </div>
+                    <div class='temp-bar-container'>
+                        <div id='bojlerBar' class='temp-bar-fill' style='background: #4CAF50;'></div>
+                    </div>
+                </div>
+
+                <!-- RADIATOR -->
+                <div>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <div>
+                            <strong>Radiator</strong>
+                            <span id='radiatorStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
+                        </div>
+                        <div>
+                            <span id='tempRadiatorDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
+                            <span class='unit'>°C</span>
+                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempRadiatorMax'>--</span>°C</span>
+                        </div>
+                    </div>
+                    <div class='temp-bar-container'>
+                        <div id='radiatorBar' class='temp-bar-fill' style='background: #ff9800;'></div>
+                    </div>
+                </div>
+            </div>
                         
             <!-- KARTA: PARAMETRY STEROWANIA GRZAŁKAMI -->
             <div class='card'>
-                <h3>🔥 Parametry sterowania grzałkami
-                    <!-- Status -->
-                    <span id='systemStatusText' style='font-size: 14px; font-weight: normal;'></span>
-                </h3>
-
-                 <div id='heaterStatus' style='margin-top: 10px; font-size: 12px; text-align: center; color: #666;'></div>
+                <h3>🔥 Parametry sterowania grzałkami </h3>
                 
+                <!-- Status -->
+                <!-- <div id='heaterStatus' style='margin-top: 10px; font-size: 12px; text-align: center; color: #666;'></div> -->
+                <span id='systemStatusText' style='font-size: 14px; font-weight: normal;'></span>
                 <!-- Progi i opóźnienia w tabeli -->
                 <div style='margin-bottom: 10px; padding: 8px; background: #f5f5f5; border-radius: 5px;'>
                     <table style='width: 100%; border-collapse: collapse; font-size: 14px;'>
@@ -122,48 +206,7 @@
                         </tr>
                     </table>
                 </div>               
-            </div>
-
-            <!-- KARTA: TEMPERATURY -->
-            <div class='card'>
-                <h3>🌡️ Temperatury</h3>
-                
-                <!-- BOJLER -->
-                <div style='margin-bottom: 15px;'>
-                    <div style='display: flex; justify-content: space-between;'>
-                        <div>
-                            <strong>Bojler</strong>
-                            <span id='bojlerStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
-                        </div>
-                        <div>
-                            <span id='tempBojlerDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
-                            <span class='unit'>°C</span>
-                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempBojlerMax'>--</span>°C</span>
-                        </div>
-                    </div>
-                    <div style='background: #e0e0e0; border-radius: 10px; height: 10px; margin-top: 5px;'>
-                        <div id='bojlerBar' style='background: #4CAF50; border-radius: 10px; height: 10px; width: 0%; transition: width 0.5s;'></div>
-                    </div>
-                </div>
-                
-                <!-- RADIATOR -->
-                <div>
-                    <div style='display: flex; justify-content: space-between;'>
-                        <div>
-                            <strong>Radiator</strong>
-                            <span id='radiatorStatus' style='font-size: 12px; margin-left: 5px; color: #4CAF50;'>✅ OK</span>
-                        </div>
-                        <div>
-                            <span id='tempRadiatorDisplay' style='font-size: 24px; font-weight: bold;'>--</span>
-                            <span class='unit'>°C</span>
-                            <span style='font-size: 12px; color: #666; margin-left: 5px;'>/ <span id='tempRadiatorMax'>--</span>°C</span>
-                        </div>
-                    </div>
-                    <div style='background: #e0e0e0; border-radius: 10px; height: 10px; margin-top: 5px;'>
-                        <div id='radiatorBar' style='background: #ff9800; border-radius: 10px; height: 10px; width: 0%; transition: width 0.5s;'></div>
-                    </div>
-                </div>
-            </div>
+            </div>           
 
             <!-- KARTA: PRODUKCJA -->
             <div class='card'>
@@ -202,16 +245,7 @@
                     <tr><td>Uptime:</td><td><span id='uptime'>---</span></td></tr>
                     <tr><td>Free RAM:</td><td><span id='freeHeap'>---</span> <span class='unit'>bytes</span></td></tr>                    
                 </table>
-            </div>
-            <!-- KARTA: CZAS NTP -->
-            <div class='card'>
-                <h3>🕐 Czas systemowy</h3>
-                <div style='text-align: center; padding: 10px;'>
-                    <div id='ntpDatetime' style='font-size: 20px; font-weight: bold;'>---</div>
-                    <div id='ntpDate' style='font-size: 14px; color: #666;'>---</div>
-                    <div id='ntpStatus' style='font-size: 12px; margin-top: 8px;'></div>
-                </div>
-            </div>
+            </div>            
 
             <!-- KARTA: O PROGRAMIE -->
             <div class='card'>
@@ -534,32 +568,65 @@
         }
 
         
-        function fetchNTPTime() {
+        // ========== PROSTY LOKALNY ZEGAR ==========               
+        let ntpTime = null;
+
+        function initClock() {
+            syncWithNTP();
+            setInterval(syncWithNTP, 300000); // co 5 minut
+        }
+
+        function syncWithNTP() {
             fetch('/api/time')
                 .then(response => response.json())
                 .then(data => {
-                    const datetimeSpan = document.getElementById('ntpDatetime');
-                    const dateSpan = document.getElementById('ntpDate');
-                    const statusSpan = document.getElementById('ntpStatus');
-                    
                     if (data.synced) {
-                        datetimeSpan.innerHTML = data.time || '---';
-                        dateSpan.innerHTML = data.date || '---';
-                        statusSpan.innerHTML = '✅ Zsynchronizowany z NTP';
-                        statusSpan.style.color = '#4CAF50';
-                    } else {
-                        datetimeSpan.innerHTML = '--- : --- : ---';
-                        dateSpan.innerHTML = '---- -- --';
-                        statusSpan.innerHTML = '⚠️ Czekam na synchronizację NTP...';
-                        statusSpan.style.color = '#ff9800';
+                        // Rozbij datetime na części
+                        const parts = data.datetime.split(' ');
+                        const dateParts = parts[0].split('-');
+                        const timeParts = parts[1].split(':');
+                        
+                        // Stwórz obiekt Date lokalnie
+                        ntpTime = new Date(
+                            parseInt(dateParts[0]),     // rok
+                            parseInt(dateParts[1]) - 1, // miesiąc (0-11)
+                            parseInt(dateParts[2]),     // dzień
+                            parseInt(timeParts[0]),     // godzina
+                            parseInt(timeParts[1]),     // minuta
+                            parseInt(timeParts[2])      // sekunda
+                        );
+                        
+                        updateClock();
+                        
+                        if (!window.clockRunning) {
+                            window.clockRunning = true;
+                            setInterval(updateClock, 1000);
+                        }
+                        
+                        document.getElementById('ntpStatus').innerHTML = '✅ Zsynchronizowany z NTP';
+                        document.getElementById('ntpStatus').style.color = '#4CAF50';
                     }
                 })
-                .catch(err => {
-                    console.error('Błąd fetch NTP:', err);
-                    const statusSpan = document.getElementById('ntpStatus');
-                    statusSpan.innerHTML = '❌ Błąd odczytu czasu';
-                    statusSpan.style.color = '#f44336';
-                });
+                .catch(err => console.error('Błąd NTP:', err));
+        }
+
+        function updateClock() {
+            if (!ntpTime) return;
+            
+            // Dodaj 1 sekundę
+            ntpTime.setSeconds(ntpTime.getSeconds() + 1);
+            
+            // Formatowanie
+            const hours = String(ntpTime.getHours()).padStart(2, '0');
+            const minutes = String(ntpTime.getMinutes()).padStart(2, '0');
+            const seconds = String(ntpTime.getSeconds()).padStart(2, '0');
+            
+            const days = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
+            const months = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 
+                            'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+            
+            document.getElementById('ntpDatetime').innerHTML = `${hours}:${minutes}:${seconds}`;
+            document.getElementById('ntpDate').innerHTML = `${days[ntpTime.getDay()]}, ${ntpTime.getDate()} ${months[ntpTime.getMonth()]} ${ntpTime.getFullYear()}`;
         }
 
         
@@ -647,9 +714,9 @@
         function updateSystemBadge(enabled) {
             const statusSpan = document.getElementById('systemStatusText');
             if (enabled) {
-                statusSpan.innerHTML = '<span style="color: #4CAF50;">✅ Aktywne</span>';
+                statusSpan.innerHTML = '<span style="color: #4CAF50;">✅ System grzania Aktywny</span>';
             } else {
-                statusSpan.innerHTML = '<span style="color: #f44336;">❌ Wyłączone</span>';
+                statusSpan.innerHTML = '<span style="color: #f44336;">❌ System grzania Wyłączony</span>';
             }
         }
 
@@ -674,22 +741,23 @@
                 }
             });
         }
+                
 
         // Załaduj przy starcie
          // Start
         fetchHeaterConfig();
         fetchInverterData();
-        fetchNTPTime()
         loadHeaterStatus();
         fetchSystemStatus();
         updateTemperatures();
         loadSimulation();
+        initClock();
         
         setInterval(fetchInverterData, 3000);
-        setInterval(fetchNTPTime, 10000);
-        setInterval(updateTemperatures, 5000);
+        setInterval(updateTemperatures, 5000);        
         setInterval(fetchHeaterConfig, 5000);
         setInterval(fetchSystemStatus, 5000); 
+        
     </script>
 </body>
 </html>

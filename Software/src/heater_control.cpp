@@ -731,7 +731,7 @@ String HeaterControl::getBlockReason() {
     if (heaterBlocks.temp_bojler_exceeded) reason += "❌ Temp. bojlera za wysoka; ";
     if (heaterBlocks.temp_radiator_exceeded) reason += "❌ Temp. radiatora za wysoka; ";
     if (heaterBlocks.radiator_sensor_error) reason += "❌ Czujnik radiatora nie działa; ";
-    if (heaterBlocks.powerInverterIsZero) reason += "❌ Moc falownika = 0; ";
+    if (heaterBlocks.powerInverterIsZero) reason += "❌ Moc falownika ponżej progu; ";
     if (heaterBlocks.manual_disable) reason += "❌ Ręczne wyłączenie; ";
     if (heaterBlocks.heater_system_disabled) reason += "❌ System wyłączony w config; ";
     

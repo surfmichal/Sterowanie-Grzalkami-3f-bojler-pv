@@ -76,38 +76,38 @@
                     <div class='form-group'>
                         <label>Opóźnienie wyłączania stycznika (ms)</label>
                         <input type='number' id='ContactorDelay_off_ms' step='1000' placeholder='5000'>                        
-                    </div>
-                    <div class='form-group'>
-                        <label>---</label>
-                        <input type='text' disabled placeholder='---'>
+                    </div>                    
+                     <div class='form-group'>
+                        <label>Maksymalna temp. bojlera (°C)</label>
+                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>  
                     </div>
                 </div>     
                 <div class='row'>
                     <div class='form-group'>
-                        <label>Maksymalna temp. bojlera (°C)</label>
-                        <input type='number' id='bojler_Tmax' step='1' placeholder='85'>  
+                        <label class='checkbox-group'>
+                            <input type='checkbox' id='minPowerLock' checked onchange='toggleMinPowerField()'> 
+                            Blokada załączania grzałek od minimalnej mocy inwertera 
+                        </label>
+                        <div style='font-size: 12px; color: #666; margin-top: 5px;'>
+                            Jeśli odznaczone – grzałki załączają się przy każdej mocy falownika 
+                        </div>
+                        <div class='form-group' id='minPowerField' style='margin-top: 10px;'>
+                            <label>Minimalna moc inwertera [W]</label>
+                            <input type='number' id='minPower' step='100' placeholder='3000'>
+                        </div>
                     </div>
                     <div class='form-group'>
-                        <label>Maksymalna temp. radiatora (°C)</label>
-                        <input type='number' id='radiator_Tmax' step='1' placeholder='85'> 
-                    </div>
-                </div>   
-                <div class='form-group'>
-                    <label class='checkbox-group'>
-                        <input type='checkbox' id='ZeroPowerLock' checked> 
-                        Blokada załączania grzałek gdy moc falownika wynosi 0 W 
-                    </label>
-                    <div style='font-size: 12px; color: #666; margin-top: 5px;'>
-                        Jeśli odznaczone – grzałki załącają się przy każdej mocy falownika 
-                    </div>
-                </div>            
-                <div class='form-group'>
-                    <label class='checkbox-group'>
-                        <input type='checkbox' id='radiatorT_critical' checked> 
-                        Blokada załączania grzałek od czujnika temperatury radiatora 
-                    </label>
-                    <div style='font-size: 12px; color: #666; margin-top: 5px;'>
-                        Jeśli odznaczone – brak czujnika radiatora tylko ostrzega, ale grzałki działają.
+                        <label class='checkbox-group'>
+                            <input type='checkbox' id='radiatorT_critical' checked onchange='toggleRadiatorTmaxField()'> 
+                            Blokada załączania grzałek od czujnika temperatury radiatora 
+                        </label>
+                        <div style='font-size: 12px; color: #666; margin-top: 5px;'>
+                            Jeśli odznaczone – brak czujnika radiatora tylko ostrzega, ale grzałki działają.
+                        </div>
+                        <div class='form-group' id='radiatorTmaxField' style='margin-top: 10px;'>
+                            <label>Maksymalna temp. radiatora (°C)</label>
+                            <input type='number' id='radiator_Tmax' step='1' placeholder='85'> 
+                        </div>
                     </div>
                 </div>
                 <div class='info'>
@@ -312,7 +312,8 @@
                     // ✅ POPRAWIONE ID (zgodne z HTML)
                     document.getElementById('heater_u_on').value = data.u_on ?? 252;
                     document.getElementById('heater_u_off').value = data.u_off ?? 250;
-                    document.getElementById('ZeroPowerLock').checked = data.ZeroPowerLock !== false;
+                    document.getElementById('minPowerLock').checked = data.MinPowerLock !== false;
+                    document.getElementById('minPower').value = data.MinPower ?? 3000;
                     document.getElementById('heater_delay_on').value = data.delay_on_ms ?? 1000;
                     document.getElementById('heater_delay_off').value = data.delay_off_ms ?? 5000;
                     document.getElementById('ContactorDelay_off_ms').value = data.ContactorDelay_off_ms ?? 5000;
@@ -320,6 +321,9 @@
                     document.getElementById('heater_enabled').checked = data.Heater_enabled !== false;
                     document.getElementById('radiatorT_critical').checked = data.radiatorT_critical !== false;
                     document.getElementById('radiator_Tmax').value = data.radiator_Tmax ?? 60;     // ← duże T                    
+
+                    toggleMinPowerField();
+                    toggleRadiatorTmaxField();
                 });
             
             // Konfiguracja logów
@@ -417,7 +421,7 @@
                     timeout: parseInt(document.getElementById('http_timeout').value),
                     max_retries: parseInt(document.getElementById('http_max_retries').value),
                     retry_delay: parseInt(document.getElementById('http_retry_delay').value),
-                    readDataInterval: parseInt(document.getElementById('readDataInterval'))
+                    readDataInterval: parseInt(document.getElementById('readDataInterval').value)
                 },
                 modbus: {
                     ip: document.getElementById('modbus_ip').value,
@@ -426,7 +430,7 @@
                     timeout: parseInt(document.getElementById('modbus_timeout').value),
                     max_retries: parseInt(document.getElementById('modbus_max_retries').value),
                     retry_delay: parseInt(document.getElementById('modbus_retry_delay').value),
-                    readDataInterval: parseInt(document.getElementById('readDataInterval'))
+                    readDataInterval: parseInt(document.getElementById('readDataInterval').value)
                 }
             };
 
@@ -458,14 +462,15 @@
                 enabled: document.getElementById('heater_enabled').checked,
                 u_on: parseFloat(document.getElementById('heater_u_on').value),
                 u_off: parseFloat(document.getElementById('heater_u_off').value),
-                ZeroPowerLock: parseFloat(document.getElementById('ZeroPowerLock').value),
+                MinPowerLock: (document.getElementById('minPowerLock').checked),
+                MinPower: parseFloat(document.getElementById('minPower').value),
                 delay_on_ms: parseInt(document.getElementById('heater_delay_on').value),
                 delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
                 ContactorDelay_off_ms: parseInt(document.getElementById('ContactorDelay_off_ms').value),
-                t_max: parseFloat(document.getElementById('bojler_Tmax').value),           // ← duże T
+                t_max: parseFloat(document.getElementById('bojler_Tmax').value),           
                 radiatorT_critical: document.getElementById('radiatorT_critical').checked,
                 radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value), 
-                readDataInterval: parseInt(document.getElementById('readDataInterval'))
+                readDataInterval: parseInt(document.getElementById('readDataInterval').value)
             };
             
             console.log('📤 Wysyłam dane:', data);
@@ -600,6 +605,16 @@
                 console.error('Błąd:', err);
                 document.getElementById('heater_enabled').checked = originalState;
             });
+        }
+
+        function toggleMinPowerField() {
+            const enabled = document.getElementById('minPowerLock').checked;
+            document.getElementById('minPowerField').style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleRadiatorTmaxField() {
+            const enabled = document.getElementById('radiatorT_critical').checked;
+            document.getElementById('radiatorTmaxField').style.display = enabled ? 'block' : 'none';
         }
 
         // Załaduj status przy starcie

@@ -204,6 +204,19 @@
                             <td style='padding: 4px 8px; font-weight: bold;'>⏱️ Opóźnienie wyłączania stycznika:</td>
                             <td style='padding: 4px 8px; text-align: right;'><strong><span id='ContactorDelay_off_ms'>---</span> ms</strong></td>
                         </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>ℹ️ Blokada od minimalnej mocy inwertera:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='minPowerLock'>---</span></strong></td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>ℹ️ Minimalna moc inwertera:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='minPower'>---</span>W</strong></td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 4px 8px; font-weight: bold;'>ℹ️ Blokada od przekroczonej temperatury radiatora:</td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='radT_critical'>---</span></strong></td>
+                        </tr>
+
                     </table>
                 </div>               
             </div>           
@@ -366,6 +379,10 @@
                     // Progi napięć
                     document.getElementById('u_on').innerHTML = data.u_on?.toFixed(1) || '---';
                     document.getElementById('u_off').innerHTML = data.u_off?.toFixed(1) || '---';
+
+                    // Blokada od minimalnej mocy falownika
+                    document.getElementById('minPowerLock').innerHTML = data.MinPowerLock ? '✅ Aktywna' : '⛔ Wyłączona';
+                    document.getElementById('minPower').innerHTML = data.MinPower || '---';
                     
                     // Opóźnienia
                     document.getElementById('delay_on').innerHTML = data.delay_on_ms || '---';
@@ -375,6 +392,9 @@
                     // Status systemu
                     document.getElementById('systemStatusText').innerHTML = data.Heater_enabled ? '✅ Aktywny' : '⛔ Wyłączony';
                     
+                    // blokada od temperatury radiatora
+                    document.getElementById('radT_critical').innerHTML = data.radiatorT_critacal ? '✅ Aktywna' : '⛔ Wyłączona';
+
                     // ========== TEMPERATURY MAX – pobrane z config ==========
                     const boilerMax = data.bojler_Tmax ?? 80;
                     const radMax = data.radiator_Tmax ?? 60;
@@ -603,8 +623,8 @@
                             setInterval(updateClock, 1000);
                         }
                         
-                        document.getElementById('ntpStatus').innerHTML = '✅ Zsynchronizowany z NTP';
-                        document.getElementById('ntpStatus').style.color = '#4CAF50';
+                        //document.getElementById('ntpStatus').innerHTML = '✅ Zsynchronizowany z NTP';
+                        //document.getElementById('ntpStatus').style.color = '#4CAF50';
                     }
                 })
                 .catch(err => console.error('Błąd NTP:', err));
@@ -701,12 +721,12 @@
                     updateSystemBadge(data.enabled);
                     updateHeaterButtonsState(data.enabled);
                     
-                    const statusDiv = document.getElementById('heaterStatus');
-                    if (data.enabled) {
-                        statusDiv.innerHTML = '<span style="color: green;">✅ System grzania AKTYWNY – grzałki reagują na napięcie</span>';
-                    } else {
-                        statusDiv.innerHTML = '<span style="color: red;">⛔ System grzania WYŁĄCZONY – grzałki NIE będą się załączać</span>';
-                    }
+                //    const statusDiv = document.getElementById('heaterStatus');
+                //    if (data.enabled) {
+                //        statusDiv.innerHTML = '<span style="color: green;">✅ System grzania AKTYWNY – grzałki reagują na napięcie</span>';
+                //    } else {
+                //        statusDiv.innerHTML = '<span style="color: red;">⛔ System grzania WYŁĄCZONY – grzałki NIE będą się załączać</span>';
+                //    }
                 })
                 .catch(err => console.error('Błąd:', err));
         }

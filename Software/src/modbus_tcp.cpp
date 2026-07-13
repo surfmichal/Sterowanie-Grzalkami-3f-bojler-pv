@@ -64,7 +64,7 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
       inverterData.gridVoltage2 = swapped[17] / 10.0f;
       inverterData.gridCurrent2 = swapped[18] / 100.0f;
       inverterData.gridVoltage3 = swapped[19] / 10.0f;
-      inverterData.gridCurrent3 = swapped[20] / 100.0f;
+      inverterData.gridCurrent3 = swapped[20] / 100.0f;      
       
       inverterData.pv1_power = inverterData.pv1_voltage * inverterData.pv1_current;
       inverterData.pv2_power = inverterData.pv2_voltage * inverterData.pv2_current;

@@ -260,7 +260,8 @@ void WebServerManager::handleApiSaveHeater() {
 }
 
 // ========== API: DANE Z FALOWNIKA ==========
-void WebServerManager::handleApiData() {
+void WebServerManager::
+handleApiData() {
   DynamicJsonDocument doc(2048);
   
   // Dane z falownika (Modbus lub HTTP)

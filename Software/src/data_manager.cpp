@@ -70,12 +70,7 @@ bool DataManager::fetchData() {
   }
     
   inverterData.connected = success;
-
-  if (inverterData.power = 0) {
-    heaterBlocks.powerInverterIsZero = true;
-  }
-  else {heaterBlocks.powerInverterIsZero = false;}
-  
+ 
   if (success) {
     lastUpdate = millis();
     dataValid = true;

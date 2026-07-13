@@ -683,8 +683,8 @@ void HeaterControl::updateBlockFlags() {
     
     // 5. Moc falownika wynosi zero - blokujemy grzałki (jeśli flaga załaczona)
     if (U.MinPowerLock) {
-      if (inverterData.power < U.MinPower) {
-        heaterBlocks.powerInverterIsZero = true;
+      if (inverterData.gridPower < U.MinPower) {
+        heaterBlocks.minPowerInverter = true;
         Serial.println("🔴 Blokada: MOC FALOWNIKA MNIEJSZA OD MINIMUM");
       }
     }
@@ -700,7 +700,7 @@ void HeaterControl::updateBlockFlags() {
     if (heaterBlocks.temp_bojler_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.temp_radiator_exceeded) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.radiator_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
-    if (heaterBlocks.powerInverterIsZero) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
+    if (heaterBlocks.minPowerInverter) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.manual_disable) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.heater_system_disabled) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     
@@ -731,7 +731,7 @@ String HeaterControl::getBlockReason() {
     if (heaterBlocks.temp_bojler_exceeded) reason += "❌ Temp. bojlera za wysoka; ";
     if (heaterBlocks.temp_radiator_exceeded) reason += "❌ Temp. radiatora za wysoka; ";
     if (heaterBlocks.radiator_sensor_error) reason += "❌ Czujnik radiatora nie działa; ";
-    if (heaterBlocks.powerInverterIsZero) reason += "❌ Moc falownika ponżej progu; ";
+    if (heaterBlocks.minPowerInverter) reason += "❌ Moc falownika ponżej progu; ";
     if (heaterBlocks.manual_disable) reason += "❌ Ręczne wyłączenie; ";
     if (heaterBlocks.heater_system_disabled) reason += "❌ System wyłączony w config; ";
     

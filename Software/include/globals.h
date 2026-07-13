@@ -156,7 +156,7 @@ struct InverterData {
   float gridCurrent2;        // Ib (A) - faza 2
   float gridVoltage3;        // Uc (V) - faza 3
   float gridCurrent3;        // Ic (A) - faza 3
-  float totalPower;          // P_AC (W)
+  float gridPower;           // P_AC (W)
   
   // Produkcja
   float totalEnergy;         // Total_Production (kWh)
@@ -179,7 +179,7 @@ struct InverterData {
   uint16_t comPhB;           // Com_Ph_B
   uint16_t comPhC;           // Com_Ph_C
   
-  float power;               // Obliczona moc chwilowa (W)
+  //float power;               // Obliczona moc chwilowa (W)
   //bool mbConnected;          // Flaga połączenia Modbus (true=połączono)
   //bool httpConnected;        // Flaga połączenia (true=połączono)
   bool connected;            // Flaga połączenia (true=połączono)
@@ -226,7 +226,7 @@ struct HeaterBlockFlags {
     bool radiator_sensor_error;  // Czujnik radiatora nie działa (jeśli krytyczny)
     bool manual_disable;         // Ręczne wyłączenie przez użytkownika
     bool heater_system_disabled; // System grzania wyłączony w config
-    bool powerInverterIsZero;    // zerowa moc falownika - jesli flaga zalaczona
+    bool minPowerInverter;       // za mała moc falownika - jesli flaga zalaczona
     
     // Ostrzeżenia (nie blokują, tylko informują)
     bool temp_bojler_warning;   // Temperatura bojlera blisko max

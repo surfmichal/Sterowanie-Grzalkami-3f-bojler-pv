@@ -274,7 +274,7 @@ void taskDataFetch(void* parameter) {
                           inverterData.gridVoltage1,
                           inverterData.gridVoltage2,
                           inverterData.gridVoltage3,
-                          inverterData.power);
+                          inverterData.gridPower);
           }
         } else {
           static unsigned long lastError = 0;

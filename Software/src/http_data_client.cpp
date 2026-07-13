@@ -71,7 +71,7 @@ bool HttpDataClient::parseResponse(String json, HttpData& data) {
     data.gridCurrent1 = doc["Ia"] | 0.0;
     data.gridCurrent2 = doc["Ib"] | 0.0;
     data.gridCurrent3 = doc["Ic"] | 0.0;
-    data.totalPower = doc["Power"] | 0.0;
+    data.gridPower = doc["Power"] | 0.0;
     
     data.pv1_voltage = doc["Upv1"] | 0.0;
     data.pv1_current = doc["Ipv1"] | 0.0;
@@ -92,7 +92,7 @@ bool HttpDataClient::parseResponse(String json, HttpData& data) {
     
     // Wyświetl podstawowe dane
     Serial.printf("   📊 Napięcia: Ua=%.1fV, Ub=%.1fV, Uc=%.1fV | Moc=%.0fW\n",
-                  data.gridVoltage1, data.gridVoltage2, data.gridVoltage3, data.totalPower);
+                  data.gridVoltage1, data.gridVoltage2, data.gridVoltage3, data.gridPower);
     return true;
     
   } else {
@@ -112,7 +112,7 @@ bool HttpDataClient::parseResponse(String json, HttpData& data) {
     data.gridCurrent1 = 0;
     data.gridCurrent2 = 0;
     data.gridCurrent3 = 0;
-    data.totalPower = 0;
+    data.gridPower = 0;
     data.pv1_voltage = 0;
     data.pv1_current = 0;
     data.pv1_power = 0;
@@ -260,7 +260,7 @@ bool HttpDataClient::fetchDataAsync() {
     inverterData.gridCurrent1 = data.gridCurrent1;
     inverterData.gridCurrent2 = data.gridCurrent2;
     inverterData.gridCurrent3 = data.gridCurrent3;
-    inverterData.power = data.totalPower;
+    inverterData.gridPower = data.gridPower;
     inverterData.pv1_voltage = data.pv1_voltage;
     inverterData.pv1_current = data.pv1_current;
     inverterData.pv1_power = data.pv1_power;

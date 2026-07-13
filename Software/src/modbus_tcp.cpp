@@ -69,7 +69,7 @@ void handleModbusData(ModbusMessage response, uint32_t token) {
       inverterData.pv1_power = inverterData.pv1_voltage * inverterData.pv1_current;
       inverterData.pv2_power = inverterData.pv2_voltage * inverterData.pv2_current;
       inverterData.total_pv_power = inverterData.pv1_power + inverterData.pv2_power;
-      inverterData.power = inverterData.total_pv_power;
+      inverterData.gridPower = inverterData.total_pv_power;
       
       inverterData.totalEnergy = (uint32_t)(swapped[21] * 65536 + swapped[22]);
       inverterData.totalHours = swapped[23] * 65536 + swapped[24];

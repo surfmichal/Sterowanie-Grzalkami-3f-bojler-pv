@@ -13,7 +13,7 @@ struct HttpData {
   float gridCurrent1;
   float gridCurrent2;
   float gridCurrent3;
-  float totalPower;
+  float gridPower;
   float pv1_voltage;
   float pv1_current;
   float pv1_power;

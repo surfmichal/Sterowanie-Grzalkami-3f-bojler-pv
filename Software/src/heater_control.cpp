@@ -52,22 +52,22 @@ bool HeaterControl::isDataValid() {
   // Sprawdź czy dane są dostępne w zależności od aktywnego źródła
   switch (activeDataSource) {
     case SOURCE_MODBUS:
-      return inverterData.connected;
+      return localData.connected;
     case SOURCE_HTTP:
-      return inverterData.connected;
+      return localData.connected;
     case SOURCE_NONE:
     default:
       return false;
   }
 }
 
-bool HeaterControl::isModbusDataValid() {
+bool HeaterControl::isInverterDataValid() {
   // Użyj nowej funkcji isDataValid()
   if (!isDataValid()) return false;
   
-  if (inverterData.gridVoltage1 < 150 || inverterData.gridVoltage1 > 270) return false;
-  if (inverterData.gridVoltage2 < 150 || inverterData.gridVoltage2 > 270) return false;
-  if (inverterData.gridVoltage3 < 150 || inverterData.gridVoltage3 > 270) return false;
+  if (localData.gridVoltage1 < 150 || localData.gridVoltage1 > 270) return false;
+  if (localData.gridVoltage2 < 150 || localData.gridVoltage2 > 270) return false;
+  if (localData.gridVoltage3 < 150 || localData.gridVoltage3 > 270) return false;
   
   return true;
 }
@@ -108,12 +108,12 @@ bool HeaterControl::isTemperatureSafe() {
 
 // Natychmiastowe załączenie gdy napięcie >= U_on
 bool HeaterControl::shouldTurnOn(float voltage) {
-  if (!isHeaterAllowed()) {
+  if (!isHeaterAllowedCached()) {
         return false;
     }
 
   if (!U.HeaterEnabled) return false;  
-  if (!isModbusDataValid()) return false;
+  if (!isInverterDataValid()) return false;
   if (!isTemperatureSafe()) return false;
   
   return (voltage >= U.Ugrid_on);
@@ -121,7 +121,7 @@ bool HeaterControl::shouldTurnOn(float voltage) {
 
 // Rozpocznij odliczanie do wyłączenia gdy napięcie <= U_off
 bool HeaterControl::shouldStartTurnOffTimer(float voltage) {
-  if (!isModbusDataValid()) return false;
+  if (!isInverterDataValid()) return false;
   if (!isTemperatureSafe()) return true;  // Jeśli temperatura niebezpieczna - natychmiast wyłączamy
   
   return (voltage <= U.Ugrid_off);
@@ -143,9 +143,9 @@ void HeaterControl::startTurnOnTimer(int index) {
     float voltage = 0;
     
     switch(index) {
-      case 0: phaseName = "L1"; voltage = inverterData.gridVoltage1; break;
-      case 1: phaseName = "L2"; voltage = inverterData.gridVoltage2; break;
-      case 2: phaseName = "L3"; voltage = inverterData.gridVoltage3; break;
+      case 0: phaseName = "L1"; voltage = localData.gridVoltage1; break;
+      case 1: phaseName = "L2"; voltage = localData.gridVoltage2; break;
+      case 2: phaseName = "L3"; voltage = localData.gridVoltage3; break;
     }
     
     Serial.printf("[%s] ⏳ Rozpoczęto odliczanie do ZAŁĄCZENIA (%dms, napięcie: %.1fV >= %.1fV)\n", 
@@ -163,10 +163,11 @@ void HeaterControl::cancelTurnOnTimer(int index) {
     state->turnOnTime = 0;
     
     const char* phaseName = "";
+    float voltage = 0;
     switch(index) {
-      case 0: phaseName = "L1"; break;
-      case 1: phaseName = "L2"; break;
-      case 2: phaseName = "L3"; break;
+      case 0: phaseName = "L1"; voltage = localData.gridVoltage1; break;
+      case 1: phaseName = "L2"; voltage = localData.gridVoltage2; break;
+      case 2: phaseName = "L3"; voltage = localData.gridVoltage3; break;
     }
     
     Serial.printf("[%s] 🔄 Anulowano odliczanie do ZAŁĄCZENIA (napięcie spadło poniżej %.1fV)\n", 
@@ -180,7 +181,7 @@ void HeaterControl::executeTurnOn(int index) {
   if (state->waitingToTurnOn && !state->state) {
     if (millis() >= state->turnOnTime) {
       state->waitingToTurnOn = false;
-      state->state = true;
+      //state->state = true;
       state->turnOnTime = 0;
       
       // Wywołaj turnOnNow dla faktycznego załączenia
@@ -208,19 +209,19 @@ void HeaterControl::turnOnNow(int index) {
         pin = GRZALKA1_pin; 
         ledPin = LED_GRZALKA1_pin; 
         phaseName = "L1";
-        voltage = inverterData.gridVoltage1;
+        voltage = localData.gridVoltage1;
         break;
       case 1: 
         pin = GRZALKA2_pin; 
         ledPin = LED_GRZALKA2_pin; 
         phaseName = "L2";
-        voltage = inverterData.gridVoltage2;
+        voltage = localData.gridVoltage2;
         break;
       case 2: 
         pin = GRZALKA3_pin; 
         ledPin = LED_GRZALKA3_pin; 
         phaseName = "L3";
-        voltage = inverterData.gridVoltage3;
+        voltage = localData.gridVoltage3;
         break;
     }
     
@@ -248,9 +249,9 @@ void HeaterControl::startTurnOffTimer(int index) {
     float voltage = 0;
     
     switch(index) {
-      case 0: phaseName = "L1"; voltage = inverterData.gridVoltage1; break;
-      case 1: phaseName = "L2"; voltage = inverterData.gridVoltage2; break;
-      case 2: phaseName = "L3"; voltage = inverterData.gridVoltage3; break;
+      case 0: phaseName = "L1"; voltage = localData.gridVoltage1; break;
+      case 1: phaseName = "L2"; voltage = localData.gridVoltage2; break;
+      case 2: phaseName = "L3"; voltage = localData.gridVoltage3; break;
     }
     
     Serial.printf("[%s] ⏱️ Rozpoczęto odliczanie do wyłączenia (%dms, napięcie: %.1fV <= %.1fV)\n", 
@@ -272,9 +273,9 @@ void HeaterControl::cancelTurnOffTimer(int index) {
     float voltage = 0;
     
     switch(index) {
-      case 0: phaseName = "L1"; voltage = inverterData.gridVoltage1; break;
-      case 1: phaseName = "L2"; voltage = inverterData.gridVoltage2; break;
-      case 2: phaseName = "L3"; voltage = inverterData.gridVoltage3; break;
+      case 0: phaseName = "L1"; voltage = localData.gridVoltage1; break;
+      case 1: phaseName = "L2"; voltage = localData.gridVoltage2; break;
+      case 2: phaseName = "L3"; voltage = localData.gridVoltage3; break;
     }
     
     Serial.printf("[%s] 🔄 Anulowano odliczanie (napięcie wzrosło do %.1fV > %.1fV)\n", 
@@ -288,8 +289,8 @@ void HeaterControl::cancelTurnOffTimer(int index) {
 
 bool HeaterControl::isAnyHeaterRequested() {
   for (int i = 0; i < 3; i++) {
-    float voltage = (i == 0 ? inverterData.gridVoltage1 : 
-                    (i == 1 ? inverterData.gridVoltage2 : inverterData.gridVoltage3));
+    float voltage = (i == 0 ? localData.gridVoltage1 : 
+                    (i == 1 ? localData.gridVoltage2 : localData.gridVoltage3));
     
     if (shouldTurnOn(voltage) || heater_states[i]->waitingToTurnOn) {
       return true;
@@ -313,6 +314,7 @@ void HeaterControl::turnOnContactor() {
   stycznik.state = true;
   stycznik.lastChange = millis();
   stycznik.waitingToTurnOn = false;
+  incrementHeaterCycles(4);             // wywołujemy funkcję inkrementacji statystyki załaczenia z parametrem 4 dla stycznika
   Serial.println("🔌 STYCZNIK ZAŁĄCZONY");
   LOG_INFO("HeaterControl", "STYCZNIK ZAŁĄCZONY");
 }
@@ -419,8 +421,8 @@ void HeaterControl::updateHeaterState(int index) {
       digitalWrite(ledPin, newState ? LED_ON : LED_OFF);
       updateHeaterFlag(index, newState);
       
-      float voltage = (index == 0 ? inverterData.gridVoltage1 : 
-                      (index == 1 ? inverterData.gridVoltage2 : inverterData.gridVoltage3));
+      float voltage = (index == 0 ? localData.gridVoltage1 : 
+                      (index == 1 ? localData.gridVoltage2 : localData.gridVoltage3));
       
       Serial.printf("[%s] %s (napięcie: %.1fV, stycznik: %s)\n", 
                     phaseName,
@@ -438,9 +440,16 @@ void HeaterControl::updateHeaterState(int index) {
 
 // ========== GŁÓWNA FUNKCJA update() ==========
 void HeaterControl::update() {
+
+  // ===== 0. POBIERZ SPÓJNĄ KOPIĘ DANYCH (pod mutexem) =====
+  xSemaphoreTake(xMutexInverterData, portMAX_DELAY);
+  localData = inverterData;   // kopiujemy całą strukturę na raz
+  xSemaphoreGive(xMutexInverterData);
+
+  updateBlockFlags();
  
   // ===== 1. SPRAWDŹ DANE =====
-  if (!isModbusDataValid()) {
+  if (!isInverterDataValid()) {
     bool wasAnythingOn = false;
     for (int i = 0; i < 3; i++) {
       if (heater_states[i]->state || heater_states[i]->waitingToTurnOff) {
@@ -501,9 +510,9 @@ void HeaterControl::update() {
   
   // ===== 4. LOGIKA TRIAKÓW =====
   if (stycznik.state || stycznik.waitingToTurnOn) {
-    float voltages[3] = {inverterData.gridVoltage1, 
-                         inverterData.gridVoltage2, 
-                         inverterData.gridVoltage3};
+    float voltages[3] = {localData.gridVoltage1, 
+                         localData.gridVoltage2, 
+                         localData.gridVoltage3};
     
     for (int i = 0; i < 3; i++) {
       WDT_RESET();
@@ -589,6 +598,7 @@ int HeaterControl::getActiveHeatersCount() {
 
 void HeaterControl::setDataStatus(bool connected) {
   // Ustaw odpowiednią flagę w zależności od aktywnego źródła
+   xSemaphoreTake(xMutexInverterData, portMAX_DELAY);
   switch (activeDataSource) {
     case SOURCE_MODBUS:
       inverterData.connected = connected;
@@ -599,6 +609,7 @@ void HeaterControl::setDataStatus(bool connected) {
     default:
       break;
   }
+  xSemaphoreGive(xMutexInverterData);
 }
 
 void HeaterControl::printStatus() {
@@ -606,95 +617,121 @@ void HeaterControl::printStatus() {
   Serial.printf("L1: %s (%.1fV) | L2: %s (%.1fV) | L3: %s (%.1fV)\n",
                 heater_states[0]->state ? "ON " : 
                   (heater_states[0]->waitingToTurnOff ? "Td " : "OFF"),
-                inverterData.gridVoltage1,
+                localData.gridVoltage1,
                 heater_states[1]->state ? "ON " : 
                   (heater_states[1]->waitingToTurnOff ? "Td " : "OFF"),
-                inverterData.gridVoltage2,
+                localData.gridVoltage2,
                 heater_states[2]->state ? "ON " : 
                   (heater_states[2]->waitingToTurnOff ? "Td " : "OFF"),
-                inverterData.gridVoltage3);
+                localData.gridVoltage3);
   Serial.printf("🌡️ Temperatura: %.1f°C / %.1f°C | Źródło: %s | Modbus: %s | HTTP: %s\n",
                 T.bojler.temperatura, U.bojlerTmax,
                 activeDataSource == SOURCE_MODBUS ? "Modbus" : 
                   (activeDataSource == SOURCE_HTTP ? "HTTP" : "BRAK"),
-                inverterData.connected ? "OK" : "BRAK");
+                localData.connected ? "OK" : "BRAK");
 }
 
 // ========== AKTUALIZACJA SYSTEMU BLOKAD ==========
 void HeaterControl::updateBlockFlags() {
-    // Resetuj wszystkie flagi (oprócz manual_disable i heater_system_disabled)
+    bool wasBlocked = heaterBlocks.any_blocked;
     bool manualDisable = heaterBlocks.manual_disable;
     bool systemDisabled = heaterBlocks.heater_system_disabled;
     
     memset(&heaterBlocks, 0, sizeof(heaterBlocks));
     
-    // Przywróć flagi ręczne
     heaterBlocks.manual_disable = manualDisable;
     heaterBlocks.heater_system_disabled = systemDisabled;
+    
+    // ⬇️ Zapamiętane poprzednie stany poszczególnych blokad (do logowania tylko przy zmianie)
+    static bool prev_inverter_offline = false;
+    static bool prev_temp_bojler_exceeded = false;
+    static bool prev_temp_bojler_sensor_error = false;
+    static bool prev_temp_radiator_exceeded = false;
+    static bool prev_radiator_sensor_error = false;
+    static bool prev_minPowerInverter = false;
+    static bool prev_heater_system_disabled = false;
     
     // === BLOKADY KRYTYCZNE ===
     
     // 1. Brak danych z inwertera (Modbus lub HTTP)
-    if (!inverterData.connected) {
+    if (!localData.connected) {
         heaterBlocks.inverter_offline = true;
-        Serial.println("🔴 Blokada: BRAK DANYCH Z INWERTERA");
+        if (!prev_inverter_offline) {
+            Serial.println("🔴 Blokada: BRAK DANYCH Z INWERTERA");
+        }
     }
+    prev_inverter_offline = heaterBlocks.inverter_offline;
     
     // 2. Temperatura bojlera
     if (T.bojler.ok) {
         if (T.bojler.temperatura >= U.bojlerTmax) {
             heaterBlocks.temp_bojler_exceeded = true;
-            Serial.printf("🔴 Blokada: TEMPERATURA BOJLERA %.1f°C >= MAX %d°C\n", 
-                          T.bojler.temperatura, U.bojlerTmax);
+            if (!prev_temp_bojler_exceeded) {
+                Serial.printf("🔴 Blokada: TEMPERATURA BOJLERA %.1f°C >= MAX %d°C\n", 
+                              T.bojler.temperatura, U.bojlerTmax);
+            }
         } else if (T.bojler.temperatura >= U.bojlerTmax - 5.0) {
             heaterBlocks.temp_bojler_warning = true;
+            // ostrzeżenie zostawiam bez zmian (albo też dodaj deduplikację, jeśli spamuje)
             Serial.printf("🟡 Ostrzeżenie: Temperatura bojlera %.1f°C blisko max %d°C\n", 
                           T.bojler.temperatura, U.bojlerTmax);
         }
     } else {
-        // Czujnik bojlera nie działa - blokada        
         heaterBlocks.temp_bojler_sensor_error = true;
-        Serial.println("🔴 Blokada: CZUJNIK BOJLERA NIE DZIAŁA (krytyczny)");
+        if (!prev_temp_bojler_sensor_error) {
+            Serial.println("🔴 Blokada: CZUJNIK BOJLERA NIE DZIAŁA (krytyczny)");
+        }
     }
+    prev_temp_bojler_exceeded = heaterBlocks.temp_bojler_exceeded;
+    prev_temp_bojler_sensor_error = heaterBlocks.temp_bojler_sensor_error;
     
     // 3. Temperatura radiatora
     if (T.radiator.ok) {
         if (T.radiator.temperatura >= U.radiatorTmax) {
             heaterBlocks.temp_radiator_exceeded = true;
-            Serial.printf("🔴 Blokada: TEMPERATURA RADIATORA %.1f°C >= MAX %d°C\n", 
-                          T.radiator.temperatura, U.radiatorTmax);
+            if (!prev_temp_radiator_exceeded) {
+                Serial.printf("🔴 Blokada: TEMPERATURA RADIATORA %.1f°C >= MAX %d°C\n", 
+                              T.radiator.temperatura, U.radiatorTmax);
+            }
         } else if (T.radiator.temperatura >= U.radiatorTmax - 5.0) {
             heaterBlocks.temp_radiator_warning = true;
             Serial.printf("🟡 Ostrzeżenie: Temperatura radiatora %.1f°C blisko max %d°C\n", 
                           T.radiator.temperatura, U.radiatorTmax);
         }
     } else if (U.radiatorT_critical) {
-        // Czujnik radiatora nie działa i jest krytyczny
         heaterBlocks.radiator_sensor_error = true;
         heaterBlocks.temp_radiator_exceeded = true;
-        Serial.println("🔴 Blokada: CZUJNIK RADIATORA NIE DZIAŁA (krytyczny)");
+        if (!prev_radiator_sensor_error) {
+            Serial.println("🔴 Blokada: CZUJNIK RADIATORA NIE DZIAŁA (krytyczny)");
+        }
     }
+    prev_temp_radiator_exceeded = heaterBlocks.temp_radiator_exceeded;
+    prev_radiator_sensor_error = heaterBlocks.radiator_sensor_error;
     
     // 4. System grzania wyłączony w config
     if (!U.HeaterEnabled) {
         heaterBlocks.heater_system_disabled = true;
-        Serial.println("🔴 Blokada: SYSTEM GRZANIA WYŁĄCZONY W CONFIG");
+        if (!prev_heater_system_disabled) {
+            Serial.println("🔴 Blokada: SYSTEM GRZANIA WYŁĄCZONY W CONFIG");
+        }
     }
+    prev_heater_system_disabled = heaterBlocks.heater_system_disabled;
     
-    // 5. Moc falownika wynosi zero - blokujemy grzałki (jeśli flaga załaczona)
+    // 5. Moc falownika poniżej minimum
     if (U.MinPowerLock) {
-      if (inverterData.gridPower < U.MinPower) {
+      if (localData.gridPower < U.MinPower) {
         heaterBlocks.minPowerInverter = true;
-        Serial.println("🔴 Blokada: MOC FALOWNIKA MNIEJSZA OD MINIMUM");
+        if (!prev_minPowerInverter) {
+            Serial.println("🔴 Blokada: MOC FALOWNIKA MNIEJSZA OD MINIMUM");
+        }
       }
     }
-
+    prev_minPowerInverter = heaterBlocks.minPowerInverter;
 
     // 6. Sprawdź czy jakakolwiek blokada jest aktywna
     heaterBlocks.any_blocked = false;
     heaterBlocks.active_blocks_count = 0;
     
-    // Sprawdź wszystkie flagi blokad
     if (heaterBlocks.inverter_offline) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.temp_bojler_exceeded) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
     if (heaterBlocks.temp_bojler_sensor_error) { heaterBlocks.any_blocked = true; heaterBlocks.active_blocks_count++; }
@@ -706,11 +743,12 @@ void HeaterControl::updateBlockFlags() {
     
     heaterBlocks.last_update = millis();
     
-    // Podsumowanie
-    if (heaterBlocks.any_blocked) {
-        Serial.printf("🔒 System BLOKOWANY (%d blokad)\n", heaterBlocks.active_blocks_count);
-    } else {
-        Serial.println("✅ System ODBLOKOWANY - grzałki mogą działać");
+    if (heaterBlocks.any_blocked != wasBlocked) {
+        if (heaterBlocks.any_blocked) {
+            Serial.printf("🔒 System BLOKOWANY (%d blokad)\n", heaterBlocks.active_blocks_count);
+        } else {
+            Serial.println("✅ System ODBLOKOWANY - grzałki mogą działać");
+        }
     }
 }
 
@@ -720,6 +758,11 @@ bool HeaterControl::isHeaterAllowed() {
     updateBlockFlags();
     
     // Jeśli jakakolwiek blokada jest aktywna, grzałki nie mogą się załączyć
+    return !heaterBlocks.any_blocked;
+}
+
+// ========== czyta heaterBlocks.any_blocked bez przeliczania =====
+bool HeaterControl::isHeaterAllowedCached() {
     return !heaterBlocks.any_blocked;
 }
 

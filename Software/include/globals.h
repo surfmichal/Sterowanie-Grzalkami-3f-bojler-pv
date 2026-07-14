@@ -245,22 +245,26 @@ struct LicznikiCzasu {
   uint32_t dzis_grzalka1;
   uint32_t dzis_grzalka2;
   uint32_t dzis_grzalka3;
-  
+  uint32_t dzis_stycznik;
+
   // Całkowity czas pracy (w sekundach) – akumulowane z LittleFS
   uint32_t total_grzalka1;
   uint32_t total_grzalka2;
   uint32_t total_grzalka3;
+  uint32_t total_stycznik;
   
   // Liczba załączeń w ciągu dnia
   uint16_t zalaczenia_dzis_grzalka1;
   uint16_t zalaczenia_dzis_grzalka2;
   uint16_t zalaczenia_dzis_grzalka3;
-  
+  uint16_t zalaczenia_dzis_stycznik;  // zalaczenia dzisiaj
+
   // Liczba załączeń total (opcjonalnie)
   uint32_t zalaczenia_total_grzalka1;
   uint32_t zalaczenia_total_grzalka2;
   uint32_t zalaczenia_total_grzalka3;
-  
+  uint32_t zalaczenia_total_stycznik; // zalaczenia total
+   
   // Data ostatniego zapisu (dzień roku)
   uint16_t last_save_day;
   

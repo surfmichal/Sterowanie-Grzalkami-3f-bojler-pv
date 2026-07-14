@@ -498,14 +498,21 @@ void WebServerManager::handleApiStatistics() {
   doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;
   doc["dzis_grzalka2"] = liczniki.dzis_grzalka2;
   doc["dzis_grzalka3"] = liczniki.dzis_grzalka3;
+  doc["dzis_stycznik"] = liczniki.dzis_stycznik;
   doc["total_grzalka1"] = liczniki.total_grzalka1;
   doc["total_grzalka2"] = liczniki.total_grzalka2;
   doc["total_grzalka3"] = liczniki.total_grzalka3;
+  doc["total_stycznik"] = liczniki.total_stycznik;
   
   // Liczba załączeń
   doc["zalaczenia_dzis_grzalka1"] = liczniki.zalaczenia_dzis_grzalka1;
   doc["zalaczenia_dzis_grzalka2"] = liczniki.zalaczenia_dzis_grzalka2;
   doc["zalaczenia_dzis_grzalka3"] = liczniki.zalaczenia_dzis_grzalka3;
+  doc["zalaczenia_dzis_stycznik"] = liczniki.zalaczenia_dzis_stycznik;
+  doc["zalaczenia_total_grzalka1"] = liczniki.zalaczenia_total_grzalka1;
+  doc["zalaczenia_total_grzalka2"] = liczniki.zalaczenia_total_grzalka2;
+  doc["zalaczenia_total_grzalka3"] = liczniki.zalaczenia_total_grzalka3;
+  doc["zalaczenia_total_stycznik"] = liczniki.zalaczenia_total_stycznik;
   
   String response;
   serializeJson(doc, response);

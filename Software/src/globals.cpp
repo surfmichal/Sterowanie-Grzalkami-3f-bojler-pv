@@ -22,7 +22,7 @@ HeaterState heater3_state = {false, 0, 0, false, false};
 StycznikState stycznik = {false, false, 0, false, false};
 HeaterBlockFlags heaterBlocks = {0};
 
-CzasNTP czasNTP = {0, 0, 0, 0, 0, 0, 0, 0, 0, false};
+CzasNTP czasNTP = {0};
 LicznikiCzasu liczniki = {0};
 TemperatureFIFO tempFIFO = {{0}, 0, 0, 0};
 Temperatury T = {  

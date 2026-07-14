@@ -206,13 +206,9 @@ void taskHeaterControl(void* parameter) {
   static int updateCount = 0;
   heaterControl.begin();
   
-  // Wczytaj konfigurację z pliku
   heaterControl.setThresholds(U.Ugrid_on, U.Ugrid_off);
-  heaterControl.setDelays(U.HeaterDelay_on_ms, U.HeaterDelay_off_ms);  // ← UŻYJ setDelays()
+  heaterControl.setDelays(U.HeaterDelay_on_ms, U.HeaterDelay_off_ms);
   heaterControl.enableSystem(U.HeaterEnabled);
-  
-  Serial.printf("⚙️ HeaterControl: U_on=%.1fV, U_off=%.1fV, delay_on=%dms, delay_off=%dms\n",
-                U.Ugrid_on, U.Ugrid_off, U.HeaterDelay_on_ms, U.HeaterDelay_off_ms);
   
   while (true) {
     WDT_RESET();
@@ -222,19 +218,9 @@ void taskHeaterControl(void* parameter) {
       lastModbusRead = currentTime;
       updateCount++;      
       
-      xSemaphoreTake(xMutexInverterData, portMAX_DELAY);
-      float v1 = inverterData.gridVoltage1;
-      float v2 = inverterData.gridVoltage2;
-      float v3 = inverterData.gridVoltage3;
-      bool connected = inverterData.connected;  // ← jedna flaga dla obu źródeł
-      xSemaphoreGive(xMutexInverterData);
-
-      heaterControl.setDataStatus(connected); 
-      
-      heaterControl.update();
+      heaterControl.update();   // ⬅️ update() sam pobiera dane pod mutexem
     }
     
-    //vTaskDelay(100 / portTICK_PERIOD_MS);
     vTaskDelay(pdMS_TO_TICKS(100)); 
   }
 }
@@ -471,7 +457,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     4096,
     NULL,
     1,     // wyższy priorytet
-    NULL,
+    &taskNTPHandle,
     0
   );
   esp_task_wdt_add(taskNTPHandle);
@@ -482,7 +468,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     8192,
     NULL,
     1,
-    NULL,
+    &taskDataFetchHandle,
     1
   );
   esp_task_wdt_add(taskDataFetchHandle);
@@ -494,7 +480,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     4096,
     NULL,
     1,
-    NULL,
+    &taskStatisticsHandle,
     0
   );
   esp_task_wdt_add(taskStatisticsHandle);
@@ -507,7 +493,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     8192,
     NULL,
     1,
-    NULL,
+    &taskTempLoggerHandle,
     1
   );
   esp_task_wdt_add(taskTempLoggerHandle);
@@ -543,7 +529,7 @@ void setupTasks(WiFiManager* wifi, ConfigManager* config) {
     4096,
     NULL,
     2,
-    NULL,
+    &taskHeaterControlHandle,
     1
   );
   esp_task_wdt_add(taskHeaterControlHandle);

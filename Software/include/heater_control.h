@@ -6,11 +6,12 @@
 
 class HeaterControl {
 private:
+  InverterData localData;         // lokalna kopia danych na czas jednego update()
   HeaterState* heater_states[3];
   
   bool isTemperatureSafe();       // Sprawdź czy temperatura bojlera i radiatora jest bezpieczna
   bool isDataValid();             // Sprawdź czy dane są dostępne w zależności od aktywnego źródła
-  bool isModbusDataValid();       // Sprawdź czy dane Modbus są poprawne (napięcia w zakresie)
+  bool isInverterDataValid();       // Sprawdź czy dane są poprawne (napięcia w zakresie)
   
   
   bool shouldTurnOn(float voltage);                   // Sprawdź czy załączyć
@@ -54,6 +55,7 @@ public:
   void setDataStatus(bool connected);                 // Ustaw status połączenia danych (true=połączony, false=rozłączony)
   void printStatus();                                 // Wypisz aktualny status grzałek i stycznika na Serial
   bool isHeaterAllowed();                             // Sprawdź czy grzałki mogą być włączone (czy nie ma blokad)
+  bool isHeaterAllowedCached();                       // czyta heaterBlocks.any_blocked bez przeliczania
   void updateBlockFlags();                            // Aktualizacja flag blokad w strukturze heaterBlocks
 
   String getBlockReason();                            // Pobierz powód blokady grzałek w formie tekstowej

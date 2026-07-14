@@ -12,9 +12,14 @@ bool loadStatistics() {
   File file = LittleFS.open("/statistics.json", "r");
   if (!file) {
     Serial.println("Brak statistics.json, tworzę nowy");
+    liczniki.total_stycznik = 0;
     liczniki.total_grzalka1 = 0;
     liczniki.total_grzalka2 = 0;
     liczniki.total_grzalka3 = 0;
+    liczniki.zalaczenia_total_grzalka1 = 0;
+    liczniki.zalaczenia_total_grzalka2 = 0;
+    liczniki.zalaczenia_total_grzalka3 = 0;
+    liczniki.zalaczenia_total_stycznik = 0;
     liczniki.last_save_day = 0;
     liczniki.saved_today = false;
     return false;
@@ -34,30 +39,37 @@ bool loadStatistics() {
   liczniki.total_grzalka1 = doc["total_grzalka1"] | 0;
   liczniki.total_grzalka2 = doc["total_grzalka2"] | 0;
   liczniki.total_grzalka3 = doc["total_grzalka3"] | 0;
+  liczniki.total_stycznik = doc["total_stycznik"] | 0;              // 
+  
+  liczniki.zalaczenia_total_grzalka1 = doc["zalaczenia_total_grzalka1"] | 0;  //
+  liczniki.zalaczenia_total_grzalka2 = doc["zalaczenia_total_grzalka2"] | 0;  //
+  liczniki.zalaczenia_total_grzalka3 = doc["zalaczenia_total_grzalka3"] | 0;  // 
+  liczniki.zalaczenia_total_stycznik = doc["zalaczenia_total_stycznik"] | 0;  //
+  
   liczniki.last_save_day = doc["last_save_day"] | 0;
   
-  // Sprawdź czy dziś już zapisaliśmy
   if (ntp.isSynced() && ntp.getDayOfYear() == liczniki.last_save_day) {
     liczniki.saved_today = true;
   } else {
     liczniki.saved_today = false;
   }
   
-  Serial.printf("Wczytano statystyki: total L1=%lu, L2=%lu, L3=%lu\n", 
-                liczniki.total_grzalka1, liczniki.total_grzalka2, liczniki.total_grzalka3);
+  Serial.printf("Wczytano statystyki: total L1=%lu, L2=%lu, L3=%lu, Stycznik=%lu\n", 
+                liczniki.total_grzalka1, liczniki.total_grzalka2, liczniki.total_grzalka3, liczniki.total_stycznik);
   return true;
 }
-
 // ========== ZAPIS DZIENNYCH DANYCH ==========
 bool saveDailyStatistics() {
   // Dodaj dzisiejsze wartości do total (przed zapisem)
   liczniki.total_grzalka1 += liczniki.dzis_grzalka1;
   liczniki.total_grzalka2 += liczniki.dzis_grzalka2;
   liczniki.total_grzalka3 += liczniki.dzis_grzalka3;
+  liczniki.total_stycznik += liczniki.dzis_stycznik;
   
   liczniki.zalaczenia_total_grzalka1 += liczniki.zalaczenia_dzis_grzalka1;
   liczniki.zalaczenia_total_grzalka2 += liczniki.zalaczenia_dzis_grzalka2;
   liczniki.zalaczenia_total_grzalka3 += liczniki.zalaczenia_dzis_grzalka3;
+  liczniki.zalaczenia_total_stycznik += liczniki.zalaczenia_dzis_stycznik;
   
   // Przygotuj JSON do zapisu (WSZYSTKIE DANE)
   DynamicJsonDocument doc(1024);
@@ -66,21 +78,25 @@ bool saveDailyStatistics() {
   doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;
   doc["dzis_grzalka2"] = liczniki.dzis_grzalka2;
   doc["dzis_grzalka3"] = liczniki.dzis_grzalka3;
+  doc["dzis_stycznik"] = liczniki.dzis_stycznik;
   
   // TOTAL (dotychczasowe)
   doc["total_grzalka1"] = liczniki.total_grzalka1;
   doc["total_grzalka2"] = liczniki.total_grzalka2;
   doc["total_grzalka3"] = liczniki.total_grzalka3;
+  doc["total_stycznik"] = liczniki.total_stycznik;
   
   // ZAŁĄCZENIA dziś
   doc["zalaczenia_dzis_grzalka1"] = liczniki.zalaczenia_dzis_grzalka1;
   doc["zalaczenia_dzis_grzalka2"] = liczniki.zalaczenia_dzis_grzalka2;
   doc["zalaczenia_dzis_grzalka3"] = liczniki.zalaczenia_dzis_grzalka3;
+  doc["zalaczenia_dzis_stycznik"] = liczniki.zalaczenia_dzis_stycznik;
   
   // ZAŁĄCZENIA total
   doc["zalaczenia_total_grzalka1"] = liczniki.zalaczenia_total_grzalka1;
   doc["zalaczenia_total_grzalka2"] = liczniki.zalaczenia_total_grzalka2;
   doc["zalaczenia_total_grzalka3"] = liczniki.zalaczenia_total_grzalka3;
+  doc["zalaczenia_total_stycznik"] = liczniki.zalaczenia_total_stycznik;
   
   // Data zapisu (dla kontroli)
   doc["last_save_day"] = ntp.getDayOfYear();
@@ -106,14 +122,17 @@ bool saveDailyStatistics() {
                 liczniki.dzis_grzalka1, liczniki.dzis_grzalka2, liczniki.dzis_grzalka3);
   Serial.printf("   Total: L1=%lu, L2=%lu, L3=%lu\n", 
                 liczniki.total_grzalka1, liczniki.total_grzalka2, liczniki.total_grzalka3);
-  Serial.printf("   Załączenia dziś: L1=%u, L2=%u, L3=%u\n",
-                liczniki.zalaczenia_dzis_grzalka1, 
-                liczniki.zalaczenia_dzis_grzalka2, 
-                liczniki.zalaczenia_dzis_grzalka3);
-  Serial.printf("   Załączenia total: L1=%u, L2=%u, L3=%u\n",
-                liczniki.zalaczenia_total_grzalka1,
-                liczniki.zalaczenia_total_grzalka2,
-                liczniki.zalaczenia_total_grzalka3);
+  Serial.printf("   Załączenia dziś: L1=%u, L2=%u, L3=%u, Stycznik=%u\n",
+              liczniki.zalaczenia_dzis_grzalka1, 
+              liczniki.zalaczenia_dzis_grzalka2, 
+              liczniki.zalaczenia_dzis_grzalka3,
+              liczniki.zalaczenia_dzis_stycznik);
+
+Serial.printf("   Załączenia total: L1=%u, L2=%u, L3=%u, Stycznik=%u\n",
+              liczniki.zalaczenia_total_grzalka1,
+              liczniki.zalaczenia_total_grzalka2,
+              liczniki.zalaczenia_total_grzalka3,
+              liczniki.zalaczenia_total_stycznik);
   
   return true;
 }
@@ -123,9 +142,11 @@ void resetDailyCounters() {
   liczniki.dzis_grzalka1 = 0;
   liczniki.dzis_grzalka2 = 0;
   liczniki.dzis_grzalka3 = 0;
+  liczniki.dzis_stycznik = 0;
   liczniki.zalaczenia_dzis_grzalka1 = 0;
   liczniki.zalaczenia_dzis_grzalka2 = 0;
   liczniki.zalaczenia_dzis_grzalka3 = 0;
+  liczniki.zalaczenia_dzis_stycznik = 0;
   liczniki.saved_today = false;
   
   Serial.println("Reset dziennych liczników (nowy dzień)");
@@ -136,6 +157,7 @@ void updateHeaterRuntime() {
   static bool lastState1 = false;
   static bool lastState2 = false;
   static bool lastState3 = false;
+  static bool lastStateSt = false;
   static unsigned long lastCheck = 0;
   
   unsigned long now = millis();
@@ -145,11 +167,13 @@ void updateHeaterRuntime() {
     if (lastState1) liczniki.dzis_grzalka1 += delta;
     if (lastState2) liczniki.dzis_grzalka2 += delta;
     if (lastState3) liczniki.dzis_grzalka3 += delta;
+    if (lastStateSt) liczniki.dzis_stycznik += delta;
   }
   
   lastState1 = Z.heater1_flag;
   lastState2 = Z.heater2_flag;
   lastState3 = Z.heater3_flag;
+  lastStateSt = stycznik.state;
   lastCheck = now;
 }
 
@@ -159,6 +183,7 @@ void incrementHeaterCycles(int heaterNum) {
     case 1: liczniki.zalaczenia_dzis_grzalka1++; break;
     case 2: liczniki.zalaczenia_dzis_grzalka2++; break;
     case 3: liczniki.zalaczenia_dzis_grzalka3++; break;
+    case 4: liczniki.zalaczenia_dzis_stycznik++; break; // 4 wywolane podczas zalaczenia stycznika
   }
 }
 
@@ -204,14 +229,17 @@ String getStatisticsJSON() {
   doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;
   doc["dzis_grzalka2"] = liczniki.dzis_grzalka2;
   doc["dzis_grzalka3"] = liczniki.dzis_grzalka3;
+  doc["dzis_stycznik"] = liczniki.dzis_stycznik;
   doc["zalaczenia_dzis_grzalka1"] = liczniki.zalaczenia_dzis_grzalka1;
   doc["zalaczenia_dzis_grzalka2"] = liczniki.zalaczenia_dzis_grzalka2;
   doc["zalaczenia_dzis_grzalka3"] = liczniki.zalaczenia_dzis_grzalka3;
+  doc["zalaczenia_dzis_stycznik"] = liczniki.zalaczenia_dzis_stycznik;
   
   // Total
   doc["total_grzalka1"] = liczniki.total_grzalka1;
   doc["total_grzalka2"] = liczniki.total_grzalka2;
   doc["total_grzalka3"] = liczniki.total_grzalka3;
+  doc["total_stycznik"] = liczniki.total_stycznik;
   
   // Info o zapisie
   doc["last_save_day"] = liczniki.last_save_day;

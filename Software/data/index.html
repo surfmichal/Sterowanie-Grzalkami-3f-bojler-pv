@@ -169,6 +169,50 @@
                     </div>
                 </div>
             </div>
+
+            <!-- KARTA: LICZNIKI CZASU PRACY -->
+            <div class='card'>
+                <h3>⏱️ Liczniki czasu pracy</h3>
+                <table>
+                    <thead>
+                        <tr style='border-bottom: 2px solid #ddd;'>
+                            <th style='text-align:left; padding:6px 4px;'>Urządzenie</th>
+                            <th style='text-align:center; padding:6px 4px;'>Dziś</th>
+                            <th style='text-align:center; padding:6px 4px;'>Łącznie</th>
+                            <th style='text-align:center; padding:6px 4px;'>Załączeń dziś</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style='padding:6px 4px;'>🔥 Grzałka 1</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='dzis_grzalka1'>--</span> min</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='total_grzalka1'>--</span> h</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='zalaczenia_dzis_grzalka1'>--</span></td>
+                        </tr>
+                        <tr>
+                            <td style='padding:6px 4px;'>🔥 Grzałka 2</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='dzis_grzalka2'>--</span> min</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='total_grzalka2'>--</span> h</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='zalaczenia_dzis_grzalka2'>--</span></td>
+                        </tr>
+                        <tr>
+                            <td style='padding:6px 4px;'>🔥 Grzałka 3</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='dzis_grzalka3'>--</span> min</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='total_grzalka3'>--</span> h</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='zalaczenia_dzis_grzalka3'>--</span></td>
+                        </tr>
+                        <tr style='border-top: 1px solid #ddd;'>
+                            <td style='padding:6px 4px;'>⚡ Stycznik główny</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='dzis_stycznik'>--</span> min</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='total_stycznik'>--</span> h</td>
+                            <td style='text-align:center; padding:6px 4px;'><span id='zalaczenia_dzis_stycznik'>--</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style='margin-top:8px; font-size:11px; color:#999; text-align:right;'>
+                    Ostatni zapis: <span id='statistics_last_save'>--</span>
+                </div>
+            </div>
                         
             <!-- KARTA: PARAMETRY STEROWANIA GRZAŁKAMI -->
             <div class='card'>
@@ -761,6 +805,49 @@
                 }
             });
         }
+
+        function fetchStatistics() {
+            fetch('/api/statistics')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Statistics data:', data);
+                    
+                    // Konwersja sekund na minuty (zaokrąglenie do 1 miejsca po przecinku)
+                    const toMinutes = (sec) => (sec / 60).toFixed(1);
+                    const toHours = (sec) => (sec / 3600).toFixed(1);
+                    
+                    // Grzałka 1
+                    document.getElementById('dzis_grzalka1').innerHTML = toMinutes(data.dzis_grzalka1 || 0);
+                    document.getElementById('total_grzalka1').innerHTML = toHours(data.total_grzalka1 || 0);
+                    document.getElementById('zalaczenia_dzis_grzalka1').innerHTML = data.zalaczenia_dzis_grzalka1 || 0;
+                    
+                    // Grzałka 2
+                    document.getElementById('dzis_grzalka2').innerHTML = toMinutes(data.dzis_grzalka2 || 0);
+                    document.getElementById('total_grzalka2').innerHTML = toHours(data.total_grzalka2 || 0);
+                    document.getElementById('zalaczenia_dzis_grzalka2').innerHTML = data.zalaczenia_dzis_grzalka2 || 0;
+                    
+                    // Grzałka 3
+                    document.getElementById('dzis_grzalka3').innerHTML = toMinutes(data.dzis_grzalka3 || 0);
+                    document.getElementById('total_grzalka3').innerHTML = toHours(data.total_grzalka3 || 0);
+                    document.getElementById('zalaczenia_dzis_grzalka3').innerHTML = data.zalaczenia_dzis_grzalka3 || 0;
+                    
+                    // Stycznik
+                    document.getElementById('dzis_stycznik').innerHTML = toMinutes(data.dzis_stycznik || 0);
+                    document.getElementById('total_stycznik').innerHTML = toHours(data.total_stycznik || 0);
+                    document.getElementById('zalaczenia_dzis_stycznik').innerHTML = data.zalaczenia_dzis_stycznik || 0;
+                    
+                    // Data ostatniego zapisu
+                    const lastSave = document.getElementById('statistics_last_save');
+                    if (data.last_save_date) {
+                        lastSave.innerHTML = data.last_save_date + ' (dzień ' + data.last_save_day + ')';
+                    } else if (data.last_save_day) {
+                        lastSave.innerHTML = 'Dzień ' + data.last_save_day;
+                    } else {
+                        lastSave.innerHTML = '--';
+                    }
+                })
+                .catch(err => console.error('Błąd fetch statistics:', err));
+        }
                 
 
         // Załaduj przy starcie
@@ -772,11 +859,13 @@
         updateTemperatures();
         loadSimulation();
         initClock();
+        fetchStatistics();
         
         setInterval(fetchInverterData, 3000);
         setInterval(updateTemperatures, 5000);        
         setInterval(fetchHeaterConfig, 5000);
         setInterval(fetchSystemStatus, 5000); 
+        setInterval(fetchStatistics, 30000);  // co 30 sekund
         
     </script>
 </body>

@@ -213,6 +213,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["radiatorT_critical"] = U.radiatorT_critical;
   doc["radiator_Tmax"] = U.radiatorTmax;
   doc["readDataInterval"] = U.readDataInterval;
+  doc["temperatureLogInterval"] = U.temperatureLogInterval;
   
   String response;
   serializeJson(doc, response);
@@ -248,6 +249,7 @@ void WebServerManager::handleApiSaveHeater() {
   U.radiatorT_critical = doc["radiatorT_critical"] | false;
   U.radiatorTmax = doc["radiatorTmax"] | 60;
   U.readDataInterval = doc["readDataInterval"] | 5000;
+  U.temperatureLogInterval = doc["temperatureLogInterval"] | 120000;
   
   
   // Zapisz do pliku konfiguracyjnego
@@ -323,6 +325,7 @@ handleApiData() {
   heatCfg["radiatorT_critical"] = U.radiatorT_critical;
   heatCfg["radiatorTmax"] = U.radiatorTmax;
   heatCfg["readDataInterval"] = U.readDataInterval;
+  heatCfg["temperatureLogInterval"] = U.temperatureLogInterval;
 
   
   String response;

@@ -407,7 +407,8 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.radiatorTmax = s["radiatorTmax"] | 70;
         U.radiatorT_critical = s["radiatorT_critical"] | false;
         U.serwer_www_port = s["serwer_www_port"] | 80;
-        U.readDataInterval = s["readDataInterval"] | 5000;
+        //U.readDataInterval = s["readDataInterval"] | 5000;  // odczytywane w data_source
+        U.temperatureLogInterval = s["temperatureLogInterval"] | 120000;
     }
 }
 
@@ -431,7 +432,8 @@ bool ConfigManager::saveUstawienia() {
       s["bojlerTmax"] = (int)U.bojlerTmax;
       s["radiatorTmax"] = (int)U.radiatorTmax;
       s["radiatorT_critical"] = U.radiatorT_critical;
-      s["serwer_www_port"] = (int)U.serwer_www_port;      
+      s["serwer_www_port"] = (int)U.serwer_www_port;  
+      s["temperatureLogInterval"] = (int)U.temperatureLogInterval;  
   });  
 }
 
@@ -470,4 +472,5 @@ void ConfigManager::printConfig() {
   Serial.print("radiatorTmax: "); Serial.println(U.radiatorTmax);
   Serial.print("radiatorT_critical: "); Serial.println(U.radiatorT_critical ? "true" : "false");
   Serial.print("readDataInterva: "); Serial.println(U.readDataInterval);
+  Serial.print("temperatureLogInterval: "); Serial.println(U.temperatureLogInterval);
 }

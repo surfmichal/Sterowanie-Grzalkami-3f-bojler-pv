@@ -368,40 +368,35 @@ void taskStatisticsMonitor(void* parameter) {
 }
 // ========== ZADANIE 9: ZAPIS HISTORII TEMPERATURY CO 2 MINUTY ==========
 void taskTemperatureLogger(void* parameter) {
-  // Inicjalizacja bufora FIFO
   initTemperatureFIFO();
   
   unsigned long lastLogTime = 0;
-  const unsigned long LOG_INTERVAL = 120000;  // 2 minuty = 120000 ms
   
   while (true) {
-    WDT_RESET();  // 🔥 kopnij watchdoga
+    WDT_RESET();
     
     unsigned long now = millis();
     
-    if (now - lastLogTime >= LOG_INTERVAL) {
+    if (now - lastLogTime >= U.temperatureLogInterval) {   // ⬅️ zmiana: z configu zamiast stałej
       lastLogTime = now;
       
-      // Pobierz aktualną temperaturę (z zadania temperature)
       xSemaphoreTake(xMutexTemperature, portMAX_DELAY);
-      int8_t temp = (int8_t)T.bojler.temperatura;
+      int8_t tempBojler = (int8_t)T.bojler.temperatura;
+      int8_t tempRadiator = T.radiator.ok ? (int8_t)T.radiator.temperatura : -127;
       xSemaphoreGive(xMutexTemperature);
       
-      // Dodaj do bufora FIFO
-      addTemperatureReading(temp);
+      addTemperatureReading(tempBojler, tempRadiator);
       
-      // Debug co 30 minut (ale nie za często)
       static unsigned long lastPrint = 0;
-      if (millis() - lastPrint > 1800000) {  // 30 minut
+      if (millis() - lastPrint > 1800000) {
         lastPrint = millis();
-        Serial.printf("🌡️ Zapamiętano temperaturę: %d°C (łącznie %d pomiarów)\n", 
-                      temp, tempFIFO.count);
-        LOG_INFO("TemperatureLogger", "Zapamiętano temperaturę: %d°C (łącznie %d pomiarów)", 
-                      temp, tempFIFO.count);
+        Serial.printf("🌡️ Zapamiętano: bojler=%d°C, radiator=%d°C (łącznie %d pomiarów, interwał %ums)\n", 
+                      tempBojler, tempRadiator, tempFIFO.count, U.temperatureLogInterval);
+        LOG_INFO("TemperatureLogger", "Zapamiętano: bojler=%d°C, radiator=%d°C (łącznie %d pomiarów)", 
+                      tempBojler, tempRadiator, tempFIFO.count);
       }
     }
     
-    //vTaskDelay(10000 / portTICK_PERIOD_MS);  // sprawdzaj co 10 sekund
     vTaskDelay(pdMS_TO_TICKS(10000)); 
   }
 }

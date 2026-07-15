@@ -311,47 +311,10 @@
                     <tr><td style='width:100px;'> </td><td><strong><span id='firmwareName'>ST_3F_GRZ_BOJ</span></strong></tr>
                     <tr><td>Wersja:</td><td><strong><span id='firmwareVersion'>---</span></strong></tr>
                     <tr><td>Kompilacja:</td><td><span id='compileDatetime'>---</span></tr>
-                    <tr><td>Autor:</td><td>Mick by Deepseek</tr>
+                    <tr><td>Autor:</td><td>Mick by vibe coding</tr>
                     <tr><td>Opis:</td><td>Sterownik grzałek 3-fazowych do obniżania napięcia na sieci <br> w celu uniknięcia wyłączenia falownika od zbyt wysokiego napięcia</tr>            
                 </table>
-            </div>
-
-            <!-- KARTA: TRYB SYMULACJI -->
-            <div class='card'>
-                <h3>🔧 Tryb symulacji</h3>
-                <label class='checkbox-group'>
-                    <input type='checkbox' id='simMode' onchange='toggleSimulation()'> Aktywny
-                </label>
-                <div id='simControls' style='display:none; margin-top:10px;'>
-                    
-                    <!-- Status Modbus symulacja -->
-                    <div style='margin-bottom:15px; padding:10px; background:#f0f0f0; border-radius:5px;'>
-                        <label class='checkbox-group'>
-                            <input type='checkbox' id='simModbusConnected' onchange='saveSimulation()'> 
-                            Modbus Online (symulowany)
-                        </label>
-                        <span id='modbusSimStatus' style='margin-left:10px; font-size:12px;'></span>
-                    </div>
-                    
-                    <!-- Napięcia -->
-                    <div class='row'>
-                        <div class='form-group'>
-                            <label>Napięcie L1 (V)</label>
-                            <input type='number' id='simV1' step='0.5' value='252.5' onchange='saveSimulation()'>
-                        </div>
-                        <div class='form-group'>
-                            <label>Napięcie L2 (V)</label>
-                            <input type='number'id='simV2' step='0.5' value='248.0' onchange='saveSimulation()'>
-                        </div>
-                        <div class='form-group'>
-                            <label>Napięcie L3 (V)</label>
-                            <input type='number' id='simV3' step='0.5' value='250.5' onchange='saveSimulation()'>
-                        </div>
-                    </div>
-                    
-                    <button onclick='saveSimulation()'>💾 Zapisz ustawienia symulacji</button>
-                </div>
-            </div>
+            </div>            
         </div>
     </div>
     
@@ -437,7 +400,7 @@
                     document.getElementById('systemStatusText').innerHTML = data.Heater_enabled ? '✅ Aktywny' : '⛔ Wyłączony';
                     
                     // blokada od temperatury radiatora
-                    document.getElementById('radT_critical').innerHTML = data.radiatorT_critacal ? '✅ Aktywna' : '⛔ Wyłączona';
+                    document.getElementById('radT_critical').innerHTML = data.radiatorT_critical ? '✅ Aktywna' : '⛔ Wyłączona';
 
                     // ========== TEMPERATURY MAX – pobrane z config ==========
                     const boilerMax = data.bojler_Tmax ?? 80;

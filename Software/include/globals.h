@@ -82,11 +82,12 @@ struct Ustawienia {
   uint16_t HeaterDelay_on_ms;   // ← uint16_t
   uint16_t HeaterDelay_off_ms;  // ← uint16_t
   uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
-  int8_t bojlerTmax;             // ← int8
-  int8_t radiatorTmax;           // ← int8 
-  bool radiatorT_critical;      // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
-  uint8_t serwer_www_port;      // ← uint8_t lub int
-  uint16_t readDataInterval;    // interwal odczytu danych
+  int8_t bojlerTmax;              // ← int8
+  int8_t radiatorTmax;            // ← int8 
+  bool radiatorT_critical;        // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
+  uint8_t serwer_www_port;        // ← uint8_t lub int
+  uint16_t readDataInterval;      // interwal odczytu danych
+  uint16_t temperatureLogInterval; // interwal zapisu temperatur do tablicy fifo
 };
 // ========== STRUKTURA CZASU ==========
 struct CzasNTP {
@@ -285,7 +286,8 @@ struct StycznikState {
 #define MAX_TEMP_HISTORY 720   // 24 godziny * (60 minut / 2 minuty) = 720
 
 struct TemperatureFIFO {
-  int8_t values[MAX_TEMP_HISTORY];  // wartości temperatur (-128 do 127°C)
+  int8_t values_boj[MAX_TEMP_HISTORY];  // wartości temperatur (-128 do 127°C) dla bojlera 
+  int8_t values_rad[MAX_TEMP_HISTORY];  // wartosci tempeartur dla radiatora
   uint16_t head;                     // indeks gdzie zapisać następną wartość
   uint16_t count;                    // liczba zapisanych pomiarów (max 720)
   uint16_t last_index;               // ostatni odczytany indeks (do API)

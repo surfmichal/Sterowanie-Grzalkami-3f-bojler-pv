@@ -2,131 +2,163 @@
 #include "globals.h"
 #include <Arduino.h>
 
+extern Ustawienia U;   // dostęp do U.temperatureLogInterval
+
 // ========== INICJALIZACJA BUFORA ==========
 void initTemperatureFIFO() {
   tempFIFO.head = 0;
   tempFIFO.count = 0;
   tempFIFO.last_index = 0;
-  memset(tempFIFO.values, 0, sizeof(tempFIFO.values));
+  memset(tempFIFO.values_boj, 0, sizeof(tempFIFO.values_boj));
+  memset(tempFIFO.values_rad, 0, sizeof(tempFIFO.values_rad));
   Serial.println("🌡️ Bufor temperatur FIFO zainicjalizowany (720 pomiarów)");
 }
 
-// ========== DODAJ NOWY POMIAR ==========
-void addTemperatureReading(int8_t temp) {
-  // Zapisz nową wartość
-  tempFIFO.values[tempFIFO.head] = temp;
+// ========== DODAJ NOWY POMIAR (bojler + radiator) ==========
+void addTemperatureReading(int8_t tempBojler, int8_t tempRadiator) {
+  tempFIFO.values_boj[tempFIFO.head] = tempBojler;
+  tempFIFO.values_rad[tempFIFO.head] = tempRadiator;
   
-  // Przesuń head
   tempFIFO.head = (tempFIFO.head + 1) % MAX_TEMP_HISTORY;
   
-  // Zwiększ licznik (maksymalnie MAX_TEMP_HISTORY)
   if (tempFIFO.count < MAX_TEMP_HISTORY) {
     tempFIFO.count++;
   }
   
-  // DEBUG: co godzinę pokaż info
   static unsigned long lastDebug = 0;
-  if (millis() - lastDebug > 3600000) {  // co godzinę
+  if (millis() - lastDebug > 3600000) {
     lastDebug = millis();
     Serial.printf("📊 FIFO: zapisano %d/%d pomiarów temperatury\n", 
                   tempFIFO.count, MAX_TEMP_HISTORY);
   }
 }
 
-// ========== POBIERZ TEMPERATURĘ Z HISTORII ==========
-// index: 0 = najstarszy, count-1 = najnowszy
-int8_t getTemperatureFromHistory(int index) {
+// ========== POBIERZ TEMPERATURĘ Z HISTORII (bojler lub radiator) ==========
+int8_t getTemperatureFromHistory(int index, TempSensor sensor) {
   if (index >= tempFIFO.count) {
-    return -127;  // błąd
+    return -127;
   }
-  
-  // Oblicz rzeczywisty indeks w tablicy
-  // Najstarszy pomiar jest na pozycji: (head - count + MAX_TEMP_HISTORY) % MAX_TEMP_HISTORY
   int realIndex = (tempFIFO.head - tempFIFO.count + index + MAX_TEMP_HISTORY) % MAX_TEMP_HISTORY;
-  return tempFIFO.values[realIndex];
+  return (sensor == SENSOR_RADIATOR) ? tempFIFO.values_rad[realIndex] : tempFIFO.values_boj[realIndex];
 }
 
-// ========== POBIERZ OSTATNI POMIAR ==========
-int8_t getLastTemperature() {
+// ========== POBIERZ OSTATNI POMIAR (bojler lub radiator) ==========
+int8_t getLastTemperature(TempSensor sensor) {
   if (tempFIFO.count == 0) {
     return -127;
   }
-  // Ostatni pomiar jest na pozycji head-1
   int lastIndex = (tempFIFO.head - 1 + MAX_TEMP_HISTORY) % MAX_TEMP_HISTORY;
-  return tempFIFO.values[lastIndex];
+  return (sensor == SENSOR_RADIATOR) ? tempFIFO.values_rad[lastIndex] : tempFIFO.values_boj[lastIndex];
 }
 
-// ========== POBIERZ CAŁĄ HISTORIĘ JAKO JSON ==========
+// ========== POBIERZ CAŁĄ HISTORIĘ JAKO JSON (bojler + radiator + interwał) ==========
 String getTemperatureHistoryJSON() {
-  String json = "{\"count\":" + String(tempFIFO.count) + ",\"values\":[";
+  uint16_t intervalSec = U.temperatureLogInterval / 1000;   // ⬅️ konwersja ms -> s
+
+  String json = "{\"count\":" + String(tempFIFO.count) + 
+                ",\"interval_sec\":" + String(intervalSec) + ",";
   
+  json += "\"values_bojler\":[";
   for (int i = 0; i < tempFIFO.count; i++) {
     if (i > 0) json += ",";
     json += String(getTemperatureFromHistory(i));
   }
-  
+  json += "],\"values_radiator\":[";
+  for (int i = 0; i < tempFIFO.count; i++) {
+    if (i > 0) json += ",";
+    json += String(getTemperatureFromHistory(i, SENSOR_RADIATOR));
+  }
   json += "]}";
+  
   return json;
 }
 
-// ========== POBIERZ OSTATNIE N POMIARÓW ==========
+// ========== POBIERZ OSTATNIE N POMIARÓW (bojler + radiator) ==========
 String getLastNTemperaturesJSON(int n) {
   if (n > tempFIFO.count) n = tempFIFO.count;
   
-  String json = "{\"count\":" + String(n) + ",\"values\":[";
+  uint16_t intervalSec = U.temperatureLogInterval / 1000;
+
+  String json = "{\"count\":" + String(n) + 
+                ",\"interval_sec\":" + String(intervalSec) + ",";
   
   int start = tempFIFO.count - n;
+  
+  json += "\"values_bojler\":[";
   for (int i = start; i < tempFIFO.count; i++) {
     if (i > start) json += ",";
     json += String(getTemperatureFromHistory(i));
   }
-  
+  json += "],\"values_radiator\":[";
+  for (int i = start; i < tempFIFO.count; i++) {
+    if (i > start) json += ",";
+    json += String(getTemperatureFromHistory(i, SENSOR_RADIATOR));
+  }
   json += "]}";
+  
   return json;
 }
 
-// ========== ODCZYT Z INDEKSU (dla strony WWW) ==========
-// Zwraca JSON z zakresem [start, end] gdzie start i end to indeksy w historii
+// ========== ODCZYT Z ZAKRESU (bojler + radiator) ==========
 String getTemperatureRangeJSON(int startIndex, int endIndex) {
   if (startIndex < 0) startIndex = 0;
   if (endIndex >= tempFIFO.count) endIndex = tempFIFO.count - 1;
-  if (startIndex > endIndex) return "{\"values\":[]}";
+  if (startIndex > endIndex) return "{\"values_bojler\":[],\"values_radiator\":[]}";
   
+  uint16_t intervalSec = U.temperatureLogInterval / 1000;
+
   String json = "{\"start\":" + String(startIndex) + 
                 ",\"end\":" + String(endIndex) + 
-                ",\"values\":[";
+                ",\"interval_sec\":" + String(intervalSec) + ",";
   
+  json += "\"values_bojler\":[";
   for (int i = startIndex; i <= endIndex; i++) {
     if (i > startIndex) json += ",";
     json += String(getTemperatureFromHistory(i));
   }
-  
+  json += "],\"values_radiator\":[";
+  for (int i = startIndex; i <= endIndex; i++) {
+    if (i > startIndex) json += ",";
+    json += String(getTemperatureFromHistory(i, SENSOR_RADIATOR));
+  }
   json += "]}";
+  
   return json;
 }
 
-// ========== POBRZ PODSUMOWANIE (min, max, avg) ==========
+// ========== PODSUMOWANIE (min, max, avg) DLA OBU CZUJNIKÓW ==========
 String getTemperatureSummaryJSON() {
   if (tempFIFO.count == 0) {
-    return "{\"min\":0,\"max\":0,\"avg\":0,\"count\":0}";
+    return "{\"bojler\":{\"min\":0,\"max\":0,\"avg\":0},\"radiator\":{\"min\":0,\"max\":0,\"avg\":0},\"count\":0}";
   }
   
-  int8_t min = 127;
-  int8_t max = -128;
-  int32_t sum = 0;
+  int8_t minB = 127, maxB = -128;
+  int8_t minR = 127, maxR = -128;
+  int32_t sumB = 0, sumR = 0;
   
   for (int i = 0; i < tempFIFO.count; i++) {
-    int8_t temp = getTemperatureFromHistory(i);
-    if (temp < min) min = temp;
-    if (temp > max) max = temp;
-    sum += temp;
+    int8_t tB = getTemperatureFromHistory(i);
+    int8_t tR = getTemperatureFromHistory(i, SENSOR_RADIATOR);
+    
+    if (tB < minB) minB = tB;
+    if (tB > maxB) maxB = tB;
+    sumB += tB;
+    
+    if (tR < minR) minR = tR;
+    if (tR > maxR) maxR = tR;
+    sumR += tR;
   }
   
-  float avg = (float)sum / tempFIFO.count;
+  float avgB = (float)sumB / tempFIFO.count;
+  float avgR = (float)sumR / tempFIFO.count;
   
-  String json = "{\"min\":" + String(min) + 
-                ",\"max\":" + String(max) + 
-                ",\"avg\":" + String(avg, 1) + 
-                ",\"count\":" + String(tempFIFO.count) + "}";
+  String json = "{\"bojler\":{\"min\":" + String(minB) + 
+                ",\"max\":" + String(maxB) + 
+                ",\"avg\":" + String(avgB, 1) + "},";
+  json += "\"radiator\":{\"min\":" + String(minR) + 
+                ",\"max\":" + String(maxR) + 
+                ",\"avg\":" + String(avgR, 1) + "},";
+  json += "\"count\":" + String(tempFIFO.count) + "}";
+  
   return json;
 }

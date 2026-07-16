@@ -29,3 +29,4 @@ config.json
 # Systemowe
 .DS_Store
 Thumbs.db
+data/config.json

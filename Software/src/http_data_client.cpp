@@ -151,7 +151,9 @@ bool HttpDataClient::fetchData(HttpData& data) {
   for (uint8_t attempt = 0; attempt < maxAttempts; attempt++) {
     if (attempt > 0) {
       Serial.printf("   ⏳ Retry %d/%d (delay: %dms)\n", attempt + 1, maxAttempts, retryDelay);
+      WDT_RESET(); 
       delay(retryDelay);
+      WDT_RESET(); 
     }
     
     HTTPClient http;

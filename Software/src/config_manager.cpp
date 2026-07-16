@@ -407,7 +407,6 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.radiatorTmax = s["radiatorTmax"] | 70;
         U.radiatorT_critical = s["radiatorT_critical"] | false;
         U.serwer_www_port = s["serwer_www_port"] | 80;
-        //U.readDataInterval = s["readDataInterval"] | 5000;  // odczytywane w data_source
         U.temperatureLogInterval = s["temperatureLogInterval"] | 120000;
     }
 }

@@ -25,15 +25,17 @@ private:
   void handleScan();
   void handleStatus();
   void handleSetAP();
-  void handleSetAPConfig();
+  void handleSetAPConfig();  
   
 public:
   WiFiManager(ConfigManager* cfg);
-  bool begin();
+  
   void handle();
   bool isAPMode();
   String getLocalIP();
   void reconnect();
+  bool begin();
+  bool begin(bool forceAP);
   
 };
 

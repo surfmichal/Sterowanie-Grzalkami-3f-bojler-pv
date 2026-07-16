@@ -91,6 +91,20 @@ const char* wifi_config_html = R"rawliteral(
 
 WiFiManager::WiFiManager(ConfigManager* cfg) : server(80), config(cfg), apMode(false) {}
 
+// ==========  METODA: begin z parametrem forceAP ==========
+bool WiFiManager::begin(bool forceAP) {
+  // Jeśli wymuszono tryb AP
+  if (forceAP) {
+    Serial.println("🔘 [WiFiManager] Wymuszony tryb AP (przycisk BOOT)");
+    startAPMode();
+    return true;
+  }
+  
+  // Normalne uruchomienie (istniejący kod)
+  return begin();
+}
+
+// ========== ISTNIEJĄCA METODA: begin bez parametrów ==========
 bool WiFiManager::begin() {
   WifiConfig* wifiCfg = config->getWifiConfig();
   
@@ -191,6 +205,7 @@ bool WiFiManager::begin() {
   startAPMode();
   return false;
 }
+
 
 void WiFiManager::startAPMode() {
   apMode = true;

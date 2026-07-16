@@ -53,7 +53,7 @@ void setup() {
 
   // ===== KONFIGURACJA WATCHDOG =====
   esp_task_wdt_deinit();                       // wyłącz domyślny watchdog
-  esp_task_wdt_init(15, true);  // 10 sekund, true = restart przy timeout
+  esp_task_wdt_init(15, true);  // 15 sekund, true = restart przy timeout
   esp_task_wdt_add(NULL);        // dodaj bieżące zadanie (główną pętlę)
   
   Serial.println("✅ Watchdog zainicjalizowany (10s timeout)");
@@ -79,16 +79,32 @@ void setup() {
 
   config.printConfig();
   
-  // ===== INICJALIZACJA WiFi =====
-  wifi.begin();
+  // ===== DIAGNOSTYKA PRZYCISKU BOOT w celu uruchomienia AP =====
+  int bootState = digitalRead(RESET_WIFI_pin);
+  Serial.printf("🔘 Stan przycisku BOOT: %s\n", bootState == LOW ? "WCISNIĘTY" : "ZWOLNIONY");
   
-  // ===== OBSŁUGA PRZYCISKU RESET WiFi =====
-  // Uwaga: pin RESET_WIFI_pin jest już ustawiony jako INPUT_PULLUP powyżej
-  if (digitalRead(RESET_WIFI_pin) == LOW) {
-    Serial.println("Przycisk RESET wciśnięty - czyszczę dane WiFi");
-    config.saveWifiConfig("", "", "", "", "", "", true, true);
-    delay(1000);
-    ESP.restart();
+  // ===== SPRAWDŹ CZY PRZYCISK JEST WCISNIĘTY (PRZED WiFi) =====
+  bool forceAP = (digitalRead(RESET_WIFI_pin) == LOW);
+  
+  if (forceAP) {
+    Serial.println("🔘 Przycisk BOOT wciśnięty! Wymuszam tryb AP...");
+    
+    // SYGNALIZACJA: szybkie miganie LED
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(LED_BUILTIN_pin, HIGH);
+      delay(150);
+      digitalWrite(LED_BUILTIN_pin, LOW);
+      delay(150);
+    }
+    
+    // Opcjonalnie: wyczyść zapisane dane WiFi
+    // config.saveWifiConfig("", "", "", "", "", "", true, true);
+    
+    // Uruchom WiFi w trybie AP (wymuszony)
+    wifi.begin(true);  // ← forceAP = true
+  } else {
+    Serial.println("✅ Przycisk BOOT NIE wciśnięty - normalny start");
+    wifi.begin();  // normalne łączenie
   }
     
   // ===== KONFIGURACJA OTA =====

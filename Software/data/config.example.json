@@ -1,0 +1,55 @@
+{
+"wifi":   { "ip": "192.168.20.34",
+            "gate": "192.168.20.1",
+            "mask": "255.255.255.0",
+            "dns" : "8.8.8.8",
+            "ssid": "ssid",
+            "pass": "pass",
+            "dhcp": false,
+            "active": true
+        },
+
+"data_source": {
+            "source": "http",
+            "readDataInterval": 5000
+        },
+
+"modbus": {
+            "ip": "192.168.20.70",
+            "port": 502,
+            "unitId": 1,
+            "timeout": 1000,
+            "maxRetries": 3,
+            "retryDelay": 1000
+        },
+
+"http_data": {
+            "addr": "http://192.168.0.251:8080/api/data",
+            "timeout": 5000,
+            "maxRetries": 3,
+            "retryDelay": 1000
+        },
+
+"Ustawienia": {
+            "HeaterEnabled": true,
+            "UgridOn": 253.5,
+            "UgridOff": 252.0,
+            "MinPowerLock": true,
+            "MinPower": 3000,
+            "HeaterDelay_on_ms": 500,
+            "HeaterDelayOff_ms": 5000,
+            "ContractorDelayOff_ms": 5000,
+            "bojlerTmax": 70.0,
+            "serwerWwwPort": 80,
+            "radiatorTmax": 40.0,
+            "radiatorTcritical": true,
+            "temperatureLogInterval": 120             
+        },
+
+"ntp": {
+    "server": "pool.ntp.org",
+    "gmt_offset": 3600,
+    "daylight_offset": 3600,
+    "timezone": "CET-1CEST-2,M3.5.0/2,M10.5.0/3"
+  }
+}

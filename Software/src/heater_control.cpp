@@ -227,7 +227,8 @@ void HeaterControl::turnOnNow(int index) {
     
     if (pin != -1) {
       digitalWrite(pin, GRZALKA_ON);
-      digitalWrite(ledPin, LED_ON);      
+      digitalWrite(ledPin, LED_ON);    
+      updateHeaterFlag(index, true);  
       
       LOG_INFO_DEDUP("HeaterControl", "[%s] 🔥 GRZAŁKA ZAŁĄCZONA (napięcie: %.1fV, T: %.1f°C)", 
                      phaseName, voltage, T.bojler.temperatura);
@@ -300,6 +301,21 @@ bool HeaterControl::isAnyHeaterRequested() {
 }
 
 void HeaterControl::updateHeaterFlag(int index, bool state) {
+  unsigned long now = millis();
+  
+  if (state) {
+    // Przejście OFF -> ON: zapamiętaj moment startu
+    heaterOnSinceMs[index] = now;
+  } else {
+    // Przejście ON -> OFF: dolicz rzeczywisty czas pracy
+    if (heaterOnSinceMs[index] != 0) {
+      unsigned long elapsedMs = now - heaterOnSinceMs[index];
+      uint32_t elapsedSec = elapsedMs / 1000;   // można zaokrąglić w dół; nawet 0 dla bardzo krótkich - i to jest prawidłowe
+      
+      addHeaterRuntimeSeconds(index, elapsedSec);   // nowa funkcja w statistics.cpp
+      heaterOnSinceMs[index] = 0;
+    }
+  }
   switch(index) {
     case 0: Z.heater1_flag = state; break;
     case 1: Z.heater2_flag = state; break;
@@ -342,6 +358,8 @@ void HeaterControl::updateContactor() {
   bool anyHeaterOn = isAnyHeaterPhysicallyOn();
   unsigned long now = millis();
   
+  static bool prev_cannotTurnOff = false;   // ⬅️ DODANE: pamięć poprzedniego stanu
+  
   if (anyHeaterNeeded) {
     stycznik.requested = true;
     stycznik.waitingToTurnOff = false;
@@ -355,16 +373,22 @@ void HeaterControl::updateContactor() {
     if (stycznik.waitingToTurnOn && (now - stycznik.lastChange) >= STYCZNIK_DELAY_ON) {
       turnOnContactor();
     }
+    
+    prev_cannotTurnOff = false;   // ⬅️ reset, bo jesteśmy w innej gałęzi
   } 
   else {
     stycznik.requested = false;
     stycznik.waitingToTurnOn = false;
     
     if (anyHeaterOn) {
-      Serial.println("⚠️ STYCZNIK: Nie mogę wyłączyć - triaki są załączone!");
+      if (!prev_cannotTurnOff) {   // ⬅️ loguj tylko przy wejściu w ten stan
+        Serial.println("⚠️ STYCZNIK: Nie mogę wyłączyć - triaki są załączone!");
+      }
+      prev_cannotTurnOff = true;
       stycznik.waitingToTurnOff = false;
       return;
     }
+    prev_cannotTurnOff = false;   // ⬅️ wyszliśmy z problematycznego stanu
     
     if (stycznik.state && !stycznik.waitingToTurnOff) {
       stycznik.waitingToTurnOff = true;

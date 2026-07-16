@@ -9,6 +9,8 @@ private:
   InverterData localData;         // lokalna kopia danych na czas jednego update()
   HeaterState* heater_states[3];
   
+  unsigned long heaterOnSinceMs[3] = {0, 0, 0};   // zmienna pomocnicza do licznikow czasu pracy
+
   bool isTemperatureSafe();       // Sprawdź czy temperatura bojlera i radiatora jest bezpieczna
   bool isDataValid();             // Sprawdź czy dane są dostępne w zależności od aktywnego źródła
   bool isInverterDataValid();       // Sprawdź czy dane są poprawne (napięcia w zakresie)

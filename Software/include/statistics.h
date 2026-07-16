@@ -29,4 +29,6 @@ void checkAndSaveDaily();
 // Pobierz statystyki w formacie JSON (dla strony WWW)
 String getStatisticsJSON();
 
+void addHeaterRuntimeSeconds(int heaterIndex, uint32_t seconds);
+
 #endif

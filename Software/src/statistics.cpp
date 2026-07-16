@@ -164,15 +164,15 @@ void updateHeaterRuntime() {
   unsigned long delta = (now - lastCheck) / 1000;
   
   if (delta > 0 && delta < 10) {  // max 10 sekund przerwy
-    if (lastState1) liczniki.dzis_grzalka1 += delta;
-    if (lastState2) liczniki.dzis_grzalka2 += delta;
-    if (lastState3) liczniki.dzis_grzalka3 += delta;
+    //if (lastState1) liczniki.dzis_grzalka1 += delta;
+    //if (lastState2) liczniki.dzis_grzalka2 += delta;
+    //if (lastState3) liczniki.dzis_grzalka3 += delta;
     if (lastStateSt) liczniki.dzis_stycznik += delta;
   }
   
-  lastState1 = Z.heater1_flag;
-  lastState2 = Z.heater2_flag;
-  lastState3 = Z.heater3_flag;
+  //lastState1 = Z.heater1_flag;
+  //lastState2 = Z.heater2_flag;
+  //lastState3 = Z.heater3_flag;
   lastStateSt = stycznik.state;
   lastCheck = now;
 }
@@ -205,6 +205,7 @@ void checkAndSaveDaily() {
       Serial.println("📅 Nowy dzień - zapisuję wczorajsze statystyki...");
       saveDailyStatistics();
     }
+    resetDailyCounters();
     liczniki.saved_today = false;
     liczniki.last_save_day = dayOfYear;
     lastSaveDay = dayOfYear;
@@ -235,11 +236,17 @@ String getStatisticsJSON() {
   doc["zalaczenia_dzis_grzalka3"] = liczniki.zalaczenia_dzis_grzalka3;
   doc["zalaczenia_dzis_stycznik"] = liczniki.zalaczenia_dzis_stycznik;
   
-  // Total
-  doc["total_grzalka1"] = liczniki.total_grzalka1;
-  doc["total_grzalka2"] = liczniki.total_grzalka2;
-  doc["total_grzalka3"] = liczniki.total_grzalka3;
-  doc["total_stycznik"] = liczniki.total_stycznik;
+   // Total "na żywo" = ostatnio zapisany total + postęp dzisiejszy (jeszcze niezapisany)
+  doc["total_grzalka1"] = liczniki.total_grzalka1 + liczniki.dzis_grzalka1;
+  doc["total_grzalka2"] = liczniki.total_grzalka2 + liczniki.dzis_grzalka2;
+  doc["total_grzalka3"] = liczniki.total_grzalka3 + liczniki.dzis_grzalka3;
+  doc["total_stycznik"] = liczniki.total_stycznik + liczniki.dzis_stycznik;
+  
+  doc["zalaczenia_total_grzalka1"] = liczniki.zalaczenia_total_grzalka1 + liczniki.zalaczenia_dzis_grzalka1;
+  doc["zalaczenia_total_grzalka2"] = liczniki.zalaczenia_total_grzalka2 + liczniki.zalaczenia_dzis_grzalka2;
+  doc["zalaczenia_total_grzalka3"] = liczniki.zalaczenia_total_grzalka3 + liczniki.zalaczenia_dzis_grzalka3;
+  doc["zalaczenia_total_stycznik"] = liczniki.zalaczenia_total_stycznik + liczniki.zalaczenia_dzis_stycznik;
+  
   
   // Info o zapisie
   doc["last_save_day"] = liczniki.last_save_day;
@@ -248,4 +255,13 @@ String getStatisticsJSON() {
   String response;
   serializeJson(doc, response);
   return response;
+}
+
+// naliczanie czasu pracy
+void addHeaterRuntimeSeconds(int heaterIndex, uint32_t seconds) {
+  switch (heaterIndex) {
+    case 0: liczniki.dzis_grzalka1 += seconds; break;
+    case 1: liczniki.dzis_grzalka2 += seconds; break;
+    case 2: liczniki.dzis_grzalka3 += seconds; break;
+  }
 }

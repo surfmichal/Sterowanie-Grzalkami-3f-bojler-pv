@@ -493,42 +493,13 @@ void WebServerManager::handleApiResetWiFi() {
   ESP.restart();
 }
 
-// ========== API: STATYSTYKI ==========
+// ========== API: STATYSTYKI ZAŁĄCZEŃ I CZASU PRACY ==========
 void WebServerManager::handleApiStatistics() {
-  DynamicJsonDocument doc(512);
-  
-  // Czas pracy
-  doc["dzis_grzalka1"] = liczniki.dzis_grzalka1;
-  doc["dzis_grzalka2"] = liczniki.dzis_grzalka2;
-  doc["dzis_grzalka3"] = liczniki.dzis_grzalka3;
-  doc["dzis_stycznik"] = liczniki.dzis_stycznik;
-
-  doc["total_grzalka1"] = liczniki.total_grzalka1;
-  doc["total_grzalka2"] = liczniki.total_grzalka2;
-  doc["total_grzalka3"] = liczniki.total_grzalka3;
-  doc["total_stycznik"] = liczniki.total_stycznik;
-  
-  // Liczba załączeń
-  doc["zalaczenia_dzis_grzalka1"] = liczniki.zalaczenia_dzis_grzalka1;
-  doc["zalaczenia_dzis_grzalka2"] = liczniki.zalaczenia_dzis_grzalka2;
-  doc["zalaczenia_dzis_grzalka3"] = liczniki.zalaczenia_dzis_grzalka3;
-  doc["zalaczenia_dzis_stycznik"] = liczniki.zalaczenia_dzis_stycznik;
-
-  doc["zalaczenia_total_grzalka1"] = liczniki.zalaczenia_total_grzalka1;
-  doc["zalaczenia_total_grzalka2"] = liczniki.zalaczenia_total_grzalka2;
-  doc["zalaczenia_total_grzalka3"] = liczniki.zalaczenia_total_grzalka3;
-  doc["zalaczenia_total_stycznik"] = liczniki.zalaczenia_total_stycznik;
-  
-  // Data ostatniego zapisu
-    doc["last_save_day"] = liczniki.last_save_day;
-    doc["last_save_date"] = ntp.getDateString();
-
-  String response;
-  serializeJson(doc, response);
+  String response = getStatisticsJSON();
   server.send(200, "application/json", response);
 }
 
-// ========== API: STATYSTYKI ==========
+// ========== API: STATYSTYKI TEMPERATUR ==========
 void WebServerManager::handleApiTemperatureHistory() {
   String json = getTemperatureHistoryJSON();
   server.send(200, "application/json", json);

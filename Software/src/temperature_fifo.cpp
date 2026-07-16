@@ -53,7 +53,7 @@ int8_t getLastTemperature(TempSensor sensor) {
 
 // ========== POBIERZ CAŁĄ HISTORIĘ JAKO JSON (bojler + radiator + interwał) ==========
 String getTemperatureHistoryJSON() {
-  uint16_t intervalSec = U.temperatureLogInterval / 1000;   // ⬅️ konwersja ms -> s
+  uint16_t intervalSec = U.temperatureLogInterval;   // ⬅️ konwersja ms -> s
 
   String json = "{\"count\":" + String(tempFIFO.count) + 
                 ",\"interval_sec\":" + String(intervalSec) + ",";
@@ -77,7 +77,7 @@ String getTemperatureHistoryJSON() {
 String getLastNTemperaturesJSON(int n) {
   if (n > tempFIFO.count) n = tempFIFO.count;
   
-  uint16_t intervalSec = U.temperatureLogInterval / 1000;
+  uint16_t intervalSec = U.temperatureLogInterval;
 
   String json = "{\"count\":" + String(n) + 
                 ",\"interval_sec\":" + String(intervalSec) + ",";
@@ -105,7 +105,7 @@ String getTemperatureRangeJSON(int startIndex, int endIndex) {
   if (endIndex >= tempFIFO.count) endIndex = tempFIFO.count - 1;
   if (startIndex > endIndex) return "{\"values_bojler\":[],\"values_radiator\":[]}";
   
-  uint16_t intervalSec = U.temperatureLogInterval / 1000;
+  uint16_t intervalSec = U.temperatureLogInterval;
 
   String json = "{\"start\":" + String(startIndex) + 
                 ",\"end\":" + String(endIndex) + 

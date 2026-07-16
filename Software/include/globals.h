@@ -87,7 +87,7 @@ struct Ustawienia {
   bool radiatorT_critical;        // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)
   uint8_t serwer_www_port;        // ← uint8_t lub int
   uint16_t readDataInterval;      // interwal odczytu danych
-  uint16_t temperatureLogInterval; // interwal zapisu temperatur do tablicy fifo
+  uint16_t temperatureLogInterval; // interwal zapisu temperatur do tablicy fifo w [s]
 };
 // ========== STRUKTURA CZASU ==========
 struct CzasNTP {

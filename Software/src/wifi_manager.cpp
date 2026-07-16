@@ -7,13 +7,14 @@ const char* wifi_config_html = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Konfiguracja WiFi - ESP32</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial; text-align: center; margin-top: 50px; background: #f5f5f5; }
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f5f5f5; }
         .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        input, select { display: block; margin: 10px auto; padding: 10px; width: 90%; max-width: 300px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        input, select { display: block; margin: 10px auto; padding: 10px; width: 90%; max-width: 300px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; font-size: 16px; }
         button:hover { background: #45a049; }
         .reset-btn { background: #f44336; }
         .reset-btn:hover { background: #da190b; }
@@ -173,6 +174,7 @@ bool WiFiManager::begin() {
   const int maxAttempts = 40;
   
   while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts) {
+    esp_task_wdt_reset();  // 🔥 KOPNIJ WATCHDOGA
     delay(500);
     Serial.print(".");
     attempts++;

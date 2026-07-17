@@ -21,12 +21,11 @@
 *.swo
 
 # Dane
-data/  # jeśli nie chcesz wysyłać plików konfiguracyjnych z danymi
+# Poniższy zapis ignoruje tylko plik konfiguracyjny w podfolderze data
+data/config.json
 *.log
 *.dat
-config.json
 
 # Systemowe
 .DS_Store
 Thumbs.db
-data/config.json

@@ -402,7 +402,7 @@ void ConfigManager::loadSettingsConfig(JsonDocument& doc)
         U.MinPower = s["MinPower"] | 3000;
         U.HeaterDelay_on_ms = s["HeaterDelay_on_ms"] | 1000;
         U.HeaterDelay_off_ms = s["HeaterDelay_off_ms"] | 5000;
-        U.ContactorDelay_off_ms = s["ContactorDelay_off_ms"] | 5000;
+        U.ContactorDelay_off_sec = s["ContactorDelay_off_sec"] | 600;
         U.bojlerTmax = s["bojlerTmax"] | 80;
         U.radiatorTmax = s["radiatorTmax"] | 70;
         U.radiatorT_critical = s["radiatorT_critical"] | false;
@@ -427,7 +427,7 @@ bool ConfigManager::saveUstawienia() {
       s["MinPower"] = U.MinPower;
       s["HeaterDelay_on_ms"] = U.HeaterDelay_on_ms;
       s["HeaterDelay_off_ms"] = U.HeaterDelay_off_ms;
-      s["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
+      s["ContactorDelay_off_sec"] = U.ContactorDelay_off_sec;
       s["bojlerTmax"] = (int)U.bojlerTmax;
       s["radiatorTmax"] = (int)U.radiatorTmax;
       s["radiatorT_critical"] = U.radiatorT_critical;
@@ -466,7 +466,7 @@ void ConfigManager::printConfig() {
   Serial.print("Ugrid_off: "); Serial.println(U.Ugrid_off);
   Serial.print("HeaterDelay_on_ms: "); Serial.println(U.HeaterDelay_on_ms);
   Serial.print("HeaterDelay_off_ms: "); Serial.println(U.HeaterDelay_off_ms);
-  Serial.print("ContactorDelay_off_ms: "); Serial.println(U.ContactorDelay_off_ms);
+  Serial.print("ContactorDelay_off_sec: "); Serial.println(U.ContactorDelay_off_sec);
   Serial.print("bojlerTmax: "); Serial.println(U.bojlerTmax);
   Serial.print("radiatorTmax: "); Serial.println(U.radiatorTmax);
   Serial.print("radiatorT_critical: "); Serial.println(U.radiatorT_critical ? "true" : "false");

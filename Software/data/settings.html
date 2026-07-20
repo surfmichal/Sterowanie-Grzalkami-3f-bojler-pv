@@ -74,8 +74,8 @@
                 </div>  
                 <div class='row'>
                     <div class='form-group'>
-                        <label>Opóźnienie wyłączania stycznika (ms)</label>
-                        <input type='number' id='ContactorDelay_off_ms' step='1000' placeholder='5000'>                        
+                        <label>Opóźnienie wyłączania stycznika (s)</label>
+                        <input type='number' id='ContactorDelay_off_sec' step='1000' placeholder='5000'>                        
                     </div>                    
                      <div class='form-group'>
                         <label>Maksymalna temp. bojlera (°C)</label>
@@ -316,7 +316,7 @@
                     document.getElementById('minPower').value = data.MinPower ?? 3000;
                     document.getElementById('heater_delay_on').value = data.delay_on_ms ?? 1000;
                     document.getElementById('heater_delay_off').value = data.delay_off_ms ?? 5000;
-                    document.getElementById('ContactorDelay_off_ms').value = data.ContactorDelay_off_ms ?? 5000;
+                    document.getElementById('ContactorDelay_off_sec').value = data.ContactorDelay_off_sec ?? 5000;
                     document.getElementById('bojler_Tmax').value = data.bojler_Tmax ?? 85;        // ← duże T
                     document.getElementById('heater_enabled').checked = data.Heater_enabled !== false;
                     document.getElementById('radiatorT_critical').checked = data.radiatorT_critical !== false;
@@ -466,7 +466,7 @@
                 MinPower: parseFloat(document.getElementById('minPower').value),
                 delay_on_ms: parseInt(document.getElementById('heater_delay_on').value),
                 delay_off_ms: parseInt(document.getElementById('heater_delay_off').value),
-                ContactorDelay_off_ms: parseInt(document.getElementById('ContactorDelay_off_ms').value),
+                ContactorDelay_off_sec: parseInt(document.getElementById('ContactorDelay_off_sec').value),
                 t_max: parseFloat(document.getElementById('bojler_Tmax').value),           
                 radiatorT_critical: document.getElementById('radiatorT_critical').checked,
                 radiatorTmax: parseFloat(document.getElementById('radiator_Tmax').value), 

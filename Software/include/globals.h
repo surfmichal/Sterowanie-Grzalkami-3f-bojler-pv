@@ -79,9 +79,9 @@ struct Ustawienia {
   float Ugrid_off;              // ← float
   bool  MinPowerLock;           // ← bool     - flaga blokady od minimalnej mocy falownika
   uint16_t MinPower;            // ← uint16_t - minimalna wartość mocy aby sterować grzałkami
-  uint16_t HeaterDelay_on_ms;   // ← uint16_t
-  uint16_t HeaterDelay_off_ms;  // ← uint16_t
-  uint16_t ContactorDelay_off_ms; // czas do wylaczenia stycznika
+  uint16_t HeaterDelay_on_ms;   // ← uint16_t  w ms
+  uint16_t HeaterDelay_off_ms;  // ← uint16_t  w ms
+  uint16_t ContactorDelay_off_sec; // czas do wylaczenia stycznika w sekundach
   int8_t bojlerTmax;              // ← int8
   int8_t radiatorTmax;            // ← int8 
   bool radiatorT_critical;        // ← bool (flaga czy używać temperatury z radiatora do blokowania grzałek)

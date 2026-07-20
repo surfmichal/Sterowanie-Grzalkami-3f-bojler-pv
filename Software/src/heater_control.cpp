@@ -393,11 +393,11 @@ void HeaterControl::updateContactor() {
     if (stycznik.state && !stycznik.waitingToTurnOff) {
       stycznik.waitingToTurnOff = true;
       stycznik.lastChange = now;
-      Serial.printf("⏳ STYCZNIK: rozpoczynam odliczanie do wyłączenia (%dms)\n", 
-                    U.ContactorDelay_off_ms);
+      Serial.printf("⏳ STYCZNIK: rozpoczynam odliczanie do wyłączenia (%us)\n", 
+                    U.ContactorDelay_off_sec);
     }
     
-    if (stycznik.waitingToTurnOff && (now - stycznik.lastChange) >= U.ContactorDelay_off_ms) {
+    if (stycznik.waitingToTurnOff && (now - stycznik.lastChange) >= (unsigned long)U.ContactorDelay_off_sec * 1000UL) {
       turnOffContactor();
     }
   }

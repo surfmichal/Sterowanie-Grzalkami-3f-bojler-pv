@@ -246,7 +246,7 @@
                         </tr>
                         <tr>
                             <td style='padding: 4px 8px; font-weight: bold;'>⏱️ Opóźnienie wyłączania stycznika:</td>
-                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='ContactorDelay_off_ms'>---</span> ms</strong></td>
+                            <td style='padding: 4px 8px; text-align: right;'><strong><span id='ContactorDelay_off_sec'>---</span> s</strong></td>
                         </tr>
                         <tr>
                             <td style='padding: 4px 8px; font-weight: bold;'>ℹ️ Blokada od minimalnej mocy inwertera:</td>
@@ -394,7 +394,7 @@
                     // Opóźnienia
                     document.getElementById('delay_on').innerHTML = data.delay_on_ms || '---';
                     document.getElementById('delay_off').innerHTML = data.delay_off_ms || '---';
-                    document.getElementById('ContactorDelay_off_ms').innerHTML = data.ContactorDelay_off_ms || '---';
+                    document.getElementById('ContactorDelay_off_sec').innerHTML = data.ContactorDelay_off_sec || '---';
                     
                     // Status systemu
                     document.getElementById('systemStatusText').innerHTML = data.Heater_enabled ? '✅ Aktywny' : '⛔ Wyłączony';

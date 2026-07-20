@@ -207,7 +207,7 @@ void WebServerManager::handleApiHeaterConfig() {
   doc["MinPower"] = U.MinPower;
   doc["delay_on_ms"] = U.HeaterDelay_on_ms;
   doc["delay_off_ms"] = U.HeaterDelay_off_ms;
-  doc["ContactorDelay_off_ms"] = U.ContactorDelay_off_ms;
+  doc["ContactorDelay_off_sec"] = U.ContactorDelay_off_sec;
   doc["Heater_enabled"] = true;  // Możesz dodać pole do U jeśli potrzebujesz włącz/wyłącz
   doc["bojler_Tmax"] = U.bojlerTmax;
   doc["radiatorT_critical"] = U.radiatorT_critical;
@@ -244,7 +244,7 @@ void WebServerManager::handleApiSaveHeater() {
   U.MinPower = doc["MinPower"] | 3000;
   U.HeaterDelay_on_ms = doc["delay_on_ms"] | 1000;
   U.HeaterDelay_off_ms = doc["delay_off_ms"] | 5000;  
-  U.ContactorDelay_off_ms = doc["ContactorDelay_off_ms"] | 5000;
+  U.ContactorDelay_off_sec = doc["ContactorDelay_off_sec"] | 600;
   U.bojlerTmax = doc["t_max"] | 75;
   U.radiatorT_critical = doc["radiatorT_critical"] | false;
   U.radiatorTmax = doc["radiatorTmax"] | 60;
@@ -319,7 +319,7 @@ handleApiData() {
   heatCfg["MinPower"] = U.MinPower;
   heatCfg["delay_on_ms"] = U.HeaterDelay_on_ms;
   heatCfg["delay_off_ms"] = U.HeaterDelay_off_ms;
-  heatCfg["contactor_delay_off_ms"] = U.ContactorDelay_off_ms;
+  heatCfg["ContactorDelay_off_sec"] = U.ContactorDelay_off_sec;
   heatCfg["enabled"] = U.HeaterEnabled;
   heatCfg["t_max"] = U.bojlerTmax;
   heatCfg["radiatorT_critical"] = U.radiatorT_critical;

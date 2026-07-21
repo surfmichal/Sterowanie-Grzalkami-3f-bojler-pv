@@ -17,9 +17,6 @@
         .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
         .status.online { background: #4CAF50; }
         .status.offline { background: #f44336; }
-        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button.on { background: #4CAF50; color: white; }
-        button.off { background: #f44336; color: white; }
         table { width: 100%; border-collapse: collapse; }
         td { padding: 8px; border-bottom: 1px solid #ddd; }
         td:first-child { font-weight: bold; }
@@ -40,6 +37,16 @@
         .form-group input { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         .checkbox-group { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .checkbox-group input { width: auto; }
+ 
+        @keyframes pulse-heating {
+            0%   { background-color: #ff5722; }
+            50%  { background-color: #d32f2f; }
+            100% { background-color: #ff5722; }
+        }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }        
+        button.on { animation: pulse-heating 1.5s ease-in-out infinite; color: white; border: none; }
+        button.off { background: #B3E5FC; color: #01579B; border: none; }
+        
         .temp-bar-container {
             background: #e0e0e0;
             border-radius: 12px;
@@ -66,6 +73,41 @@
             font-size: 11px;
             font-weight: bold;
             text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .value-bar-track {
+            position: relative;
+            width: 80px;
+            height: 58px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 2px auto;
+        }
+        .value-bar-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: #4CAF50;
+            border-radius: 6px;
+            transition: height 0.4s, background 0.4s;
+        }
+        .value-bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 
+                -1px -1px 0 rgba(0,0,0,0.6),
+                1px -1px 0 rgba(0,0,0,0.6),
+                -1px  1px 0 rgba(0,0,0,0.6),
+                1px  1px 0 rgba(0,0,0,0.6);
+            white-space: nowrap;
+            z-index: 2;
         }
     </style>
 </head>
@@ -106,21 +148,51 @@
                     </colgroup>
                     <tr>
                         <td><strong>Faza L1:</strong></td>
-                        <td><span id='v1'>---</span> <span class='unit'>V</span></td>
-                        <td><span id='a1'>---</span> <span class='unit'>A</span></td>  
-                        <td><button id='grzalka1' class='off' style='width:100%; padding:6px 4px; font-size:13px;'>G1 OFF</button></td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='v1Bar' class='value-bar-fill'></div>
+                                <div id='v1Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='a1Bar' class='value-bar-fill'></div>
+                                <div id='a1Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td> 
+                        <td><button id='grzalka1' class='off' style='width:100%; height:58px; margin:0; padding:0 4px; font-size:13px; display:flex; align-items:center; justify-content:center;''>G1 OFF</button></td>
                     </tr>
                     <tr>
                         <td><strong>Faza L2:</strong></td>
-                        <td><span id='v2'>---</span> <span class='unit'>V</span></td>
-                        <td><span id='a2'>---</span> <span class='unit'>A</span></td>                        
-                        <td><button id='grzalka2' class='off' style='width:100%; padding:6px 4px; font-size:13px;'>G2 OFF</button></td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='v2Bar' class='value-bar-fill'></div>
+                                <div id='v2Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='a2Bar' class='value-bar-fill'></div>
+                                <div id='a2Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td>             
+                        <td><button id='grzalka2' class='off' style='width:100%; height:58px; margin:0; padding:0 4px; font-size:13px; display:flex; align-items:center; justify-content:center;''>G3 OFF</button></td>
                     </tr>
                     <tr>
                         <td><strong>Faza L3:</strong></td>
-                        <td><span id='v3'>---</span> <span class='unit'>V</span></td>
-                        <td><span id='a3'>---</span> <span class='unit'>A</span></td>                        
-                        <td><button id='grzalka3' class='off' style='width:100%; padding:6px 4px; font-size:13px;'>G3 OFF</button></td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='v3Bar' class='value-bar-fill'></div>
+                                <div id='v3Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class='value-bar-track'>
+                                <div id='a3Bar' class='value-bar-fill'></div>
+                                <div id='a3Text' class='value-bar-text'>---</div>
+                            </div>
+                        </td>                       
+                        <td><button id='grzalka3' class='off' style='width:100%; height:58px; margin:0; padding:0 4px; font-size:13px; display:flex; align-items:center; justify-content:center;''>G3 OFF</button></td>
                     </tr>
                     <tr style='border-top:2px solid #ddd;'>
                         <td colspan='2' style='padding-left:15px;'><strong>Moc całkowita:</strong></td>                                                                    
@@ -340,14 +412,14 @@
             
             if (connected && inverter) {
                 // Napięcia
-                document.getElementById('v1').innerHTML = inverter.grid?.v1?.toFixed(1) || '---';
-                document.getElementById('v2').innerHTML = inverter.grid?.v2?.toFixed(1) || '---';
-                document.getElementById('v3').innerHTML = inverter.grid?.v3?.toFixed(1) || '---';
-                
+                updateValueBar('v1Bar', 'v1Text', inverter.grid?.v1, 205, 258, ' V', 1);
+                updateValueBar('v2Bar', 'v2Text', inverter.grid?.v2, 205, 258, ' V', 1);
+                updateValueBar('v3Bar', 'v3Text', inverter.grid?.v3, 205, 258, ' V', 1);
+                                
                 // Prądy
-                document.getElementById('a1').innerHTML = inverter.grid?.a1?.toFixed(2) || '---';
-                document.getElementById('a2').innerHTML = inverter.grid?.a2?.toFixed(2) || '---';
-                document.getElementById('a3').innerHTML = inverter.grid?.a3?.toFixed(2) || '---';
+                updateValueBar('a1Bar', 'a1Text', inverter.grid?.a1, 0, 15, ' A', 2);
+                updateValueBar('a2Bar', 'a2Text', inverter.grid?.a2, 0, 15, ' A', 2);
+                updateValueBar('a3Bar', 'a3Text', inverter.grid?.a3, 0, 15, ' A', 2);
                                 
                 // PV
                 document.getElementById('pv1_v').innerHTML = inverter.pv?.p1_voltage?.toFixed(1) || '---';
@@ -810,6 +882,30 @@
                     }
                 })
                 .catch(err => console.error('Błąd fetch statistics:', err));
+        }
+
+        function updateValueBar(barId, textId, value, min, max, unit, decimals) {
+            const bar = document.getElementById(barId);
+            const text = document.getElementById(textId);
+            if (!bar || !text) return;
+            
+            if (value === undefined || value === null) {
+                bar.style.height = '0%';
+                text.innerHTML = '---';
+                return;
+            }
+            
+            const percent = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+            bar.style.height = percent + '%';
+            text.innerHTML = value.toFixed(decimals) + unit;
+            
+            if (percent > 90 || percent < 10) {
+                bar.style.background = '#f44336';
+            } else if (percent > 75 || percent < 25) {
+                bar.style.background = '#ff9800';
+            } else {
+                bar.style.background = '#4CAF50';
+            }
         }
                 
 
